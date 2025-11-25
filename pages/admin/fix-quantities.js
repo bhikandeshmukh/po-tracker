@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
-import { apiClient } from '../../lib/api-client';
+import apiClient from '../../lib/api-client';
 
 export default function FixQuantities() {
     const router = useRouter();
@@ -19,21 +19,8 @@ export default function FixQuantities() {
         setResults(null);
 
         try {
-            const response = await fetch('/api/admin/fix-po-quantities', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to fix quantities');
-            }
-
-            setResults(data.data);
+            const response = await apiClient.post('/admin/fix-po-quantities', {});
+            setResults(response.data);
         } catch (err) {
             setError(err.message);
         } finally {
