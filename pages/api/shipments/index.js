@@ -171,13 +171,19 @@ async function createShipment(req, res, user) {
 
     // Auto-calculate expected delivery date if not provided
     let calculatedDeliveryDate = expectedDeliveryDate;
-    if (!calculatedDeliveryDate && poData.vendorWarehouseId) {
-        // Get warehouse details to check location
-        const warehouseDoc = await db.collection('vendors')
-            .doc(poData.vendorId)
-            .collection('warehouses')
-            .doc(poData.vendorWarehouseId)
-            .get();
+    if (!calculatedDeliveryDate && poData.vendorWarehouseId && poData.vendorId) {
+        // Validate IDs are not empty strings
+        const vendorIdValid = poData.vendorId && typeof poData.vendorId === 'string' && poData.vendorId.trim().length > 0;
+        const warehouseIdValid = poData.vendorWarehouseId && typeof poData.vendorWarehouseId === 'string' && poData.vendorWarehouseId.trim().length > 0;
+        
+        if (vendorIdValid && warehouseIdValid) {
+            try {
+                // Get warehouse details to check location
+                const warehouseDoc = await db.collection('vendors')
+                    .doc(poData.vendorId)
+                    .collection('warehouses')
+                    .doc(poData.vendorWarehouseId)
+                    .get();
         
         if (warehouseDoc.exists) {
             const warehouseData = warehouseDoc.data();
@@ -197,7 +203,12 @@ async function createShipment(req, res, user) {
             calculatedDeliveryDate.setDate(shipDate.getDate() + deliveryDays);
             calculatedDeliveryDate = calculatedDeliveryDate.toISOString();
             
-            console.log(`Auto-calculated delivery date: ${location} -> ${deliveryDays} days -> ${calculatedDeliveryDate}`);
+                console.log(`Auto-calculated delivery date: ${location} -> ${deliveryDays} days -> ${calculatedDeliveryDate}`);
+            }
+            } catch (error) {
+                console.error('Failed to fetch warehouse for delivery calculation:', error);
+                // Continue without auto-calculation
+            }
         }
     }
     
@@ -271,6 +282,12 @@ async function createShipment(req, res, user) {
     const batch = db.batch();
     
     for (const item of processedItems) {
+        // Validate SKU is not empty
+        if (!item.sku || typeof item.sku !== 'string' || item.sku.trim().length === 0) {
+            console.error('Invalid SKU found in item:', item);
+            continue; // Skip this item
+        }
+        
         // Save shipment item
         const shipmentItemRef = db.collection('shipments')
             .doc(shipmentId)
