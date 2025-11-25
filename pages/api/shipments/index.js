@@ -118,7 +118,19 @@ async function createShipment(req, res, user) {
         });
     }
 
-    const shipmentId = appointmentNumber; // Same as appointment ID
+    const shipmentId = appointmentNumber ? appointmentNumber.toString() : ''; // Same as appointment ID
+
+    // Validate shipmentId/appointmentNumber
+    if (!shipmentId || shipmentId.trim().length === 0) {
+        return res.status(400).json({
+            success: false,
+            error: { 
+                code: 'INVALID_APPOINTMENT_NUMBER', 
+                message: 'Invalid appointmentNumber - cannot be empty',
+                details: { receivedAppointmentNumber: appointmentNumber }
+            }
+        });
+    }
 
     // Validate poId format (should not be empty or just whitespace)
     if (!poId || typeof poId !== 'string' || poId.trim().length === 0) {
@@ -218,6 +230,17 @@ async function createShipment(req, res, user) {
     }
 
     // Get transporter details
+    console.log('Fetching transporter:', transporterId);
+    if (!transporterId || typeof transporterId !== 'string' || transporterId.trim().length === 0) {
+        return res.status(400).json({
+            success: false,
+            error: { 
+                code: 'INVALID_TRANSPORTER_ID', 
+                message: 'Invalid transporterId',
+                details: { receivedTransporterId: transporterId }
+            }
+        });
+    }
     const transporterDoc = await db.collection('transporters').doc(transporterId).get();
     const transporterData = transporterDoc.exists ? transporterDoc.data() : {};
 
@@ -379,7 +402,19 @@ async function createShipment(req, res, user) {
     }
 
     // Create appointment
-    await db.collection('appointments').doc(appointmentNumber).set({
+    console.log('Creating appointment:', appointmentNumber);
+    if (!appointmentNumber || typeof appointmentNumber !== 'string' || appointmentNumber.toString().trim().length === 0) {
+        console.error('Invalid appointmentNumber:', appointmentNumber);
+        return res.status(400).json({
+            success: false,
+            error: { 
+                code: 'INVALID_APPOINTMENT_NUMBER', 
+                message: 'Invalid appointmentNumber',
+                details: { receivedAppointmentNumber: appointmentNumber }
+            }
+        });
+    }
+    await db.collection('appointments').doc(appointmentNumber.toString()).set({
         appointmentId: appointmentNumber,
         appointmentNumber,
         shipmentId: shipmentId,
