@@ -121,10 +121,76 @@ export default function PODetail() {
     
     const handleShipmentImport = async (data) => {
         try {
+            // Clean and normalize data
+            const cleanedData = data.map((row, index) => {
+                // Extract SKU - handle both formats
+                let sku = '';
+                let size = '';
+                let sentQty = 0;
+                
+                if (row.sku) {
+                    sku = row.sku.toString().trim();
+                }
+                
+                // Handle size column if present
+                if (row.size) {
+                    size = row.size.toString().trim();
+                    // If size looks like a number, it might be sentQty
+                    if (/^\d+$/.test(size)) {
+                        sentQty = parseInt(size);
+                        size = '';
+                    }
+                }
+                
+                // Extract sentQty
+                if (row.sentQty) {
+                    const qtyStr = row.sentQty.toString().trim();
+                    const qtyMatch = qtyStr.match(/\d+/);
+                    if (qtyMatch) {
+                        sentQty = parseInt(qtyMatch[0]);
+                    }
+                }
+                
+                // If SKU contains size info (like "RFKT0001-S"), append size
+                if (size && !sku.includes(size)) {
+                    sku = `${sku}-${size}`;
+                }
+                
+                return {
+                    ...row,
+                    sku: sku,
+                    size: size,
+                    sentQty: sentQty,
+                    rowIndex: index + 1
+                };
+            });
+
+            // Validate cleaned data
+            const validationErrors = [];
+            cleanedData.forEach((row) => {
+                if (!row.shipmentNumber) validationErrors.push(`Row ${row.rowIndex}: Missing shipmentNumber`);
+                if (!row.poNumber) validationErrors.push(`Row ${row.rowIndex}: Missing poNumber`);
+                if (!row.transporterId) validationErrors.push(`Row ${row.rowIndex}: Missing transporterId`);
+                if (!row.sku || row.sku.length === 0) validationErrors.push(`Row ${row.rowIndex}: Missing or empty SKU`);
+                if (!row.sentQty || row.sentQty <= 0) validationErrors.push(`Row ${row.rowIndex}: Invalid sentQty (${row.sentQty})`);
+            });
+
+            if (validationErrors.length > 0) {
+                alert('Validation errors:\n' + validationErrors.slice(0, 5).join('\n') + 
+                      (validationErrors.length > 5 ? `\n...and ${validationErrors.length - 5} more errors` : ''));
+                return { success: false, error: validationErrors.join('; ') };
+            }
+
             // Group by shipment number
             const shipmentGroups = {};
             
-            data.forEach(row => {
+            cleanedData.forEach(row => {
+                // Skip rows with empty SKU
+                if (!row.sku || row.sku.length === 0) {
+                    console.warn('Skipping row with empty SKU:', row);
+                    return;
+                }
+
                 if (!shipmentGroups[row.shipmentNumber]) {
                     shipmentGroups[row.shipmentNumber] = {
                         shipmentNumber: row.shipmentNumber,
@@ -140,7 +206,7 @@ export default function PODetail() {
                 
                 shipmentGroups[row.shipmentNumber].items.push({
                     sku: row.sku,
-                    sentQty: parseInt(row.sentQty) || 0
+                    sentQty: row.sentQty
                 });
             });
             
@@ -197,6 +263,19 @@ export default function PODetail() {
                     const expectedDeliveryDate = poData.expectedDeliveryDate || shipment.shipmentDate;
                     
                     // Prepare shipment data for API with proper item details
+                    // Filter out items with empty SKU
+                    const validItems = shipment.items.filter(item => {
+                        if (!item.sku || !item.sku.toString().trim()) {
+                            console.warn('Skipping item with empty SKU in shipment:', shipment.shipmentNumber);
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    if (validItems.length === 0) {
+                        throw new Error(`Shipment ${shipment.shipmentNumber} has no valid items`);
+                    }
+
                     const shipmentData = {
                         appointmentNumber: shipment.shipmentNumber,
                         poId: actualPoId, // Use the actual document ID, not poNumber
@@ -206,10 +285,10 @@ export default function PODetail() {
                         expectedDeliveryDate: expectedDeliveryDate,
                         shippingAddress: {},
                         notes: shipment.notes,
-                        items: shipment.items.map(item => {
+                        items: validItems.map(item => {
                             const poItem = poItemsMap[item.sku] || {};
                             return {
-                                sku: item.sku,
+                                sku: item.sku.toString().trim(),
                                 itemName: poItem.itemName || item.sku,
                                 shippedQuantity: item.sentQty,
                                 unitPrice: poItem.unitPrice || 0,

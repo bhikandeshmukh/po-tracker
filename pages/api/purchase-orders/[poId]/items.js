@@ -118,6 +118,18 @@ async function addPOItem(req, res, poId, user) {
     }
 
     try {
+        // Validate SKU
+        if (!item.sku || typeof item.sku !== 'string' || item.sku.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: { 
+                    code: 'VALIDATION_ERROR', 
+                    message: 'SKU is required and must be a non-empty string',
+                    details: { receivedSku: item.sku }
+                }
+            });
+        }
+
         // Check if PO exists
         const poDoc = await db.collection('purchaseOrders').doc(poId).get();
         if (!poDoc.exists) {
