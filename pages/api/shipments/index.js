@@ -101,9 +101,12 @@ async function createShipment(req, res, user) {
         notes
     } = req.body;
 
-    if (!appointmentNumber || !poId || !transporterId || !items || items.length === 0) {
+    // Convert appointmentNumber to string if it's a number
+    const appointmentNumberStr = appointmentNumber != null ? String(appointmentNumber) : '';
+    
+    if (!appointmentNumberStr || !poId || !transporterId || !items || items.length === 0) {
         const missingFields = [];
-        if (!appointmentNumber) missingFields.push('appointmentNumber');
+        if (!appointmentNumberStr) missingFields.push('appointmentNumber');
         if (!poId) missingFields.push('poId');
         if (!transporterId) missingFields.push('transporterId');
         if (!items || items.length === 0) missingFields.push('items');
@@ -113,15 +116,15 @@ async function createShipment(req, res, user) {
             error: { 
                 code: 'VALIDATION_ERROR', 
                 message: `Missing required fields: ${missingFields.join(', ')}`,
-                details: { missingFields }
+                details: { missingFields, receivedAppointmentNumber: appointmentNumber }
             }
         });
     }
 
-    const shipmentId = appointmentNumber ? appointmentNumber.toString() : ''; // Same as appointment ID
+    const shipmentId = appointmentNumberStr.trim();
 
     // Validate shipmentId/appointmentNumber
-    if (!shipmentId || shipmentId.trim().length === 0) {
+    if (!shipmentId || shipmentId.length === 0) {
         return res.status(400).json({
             success: false,
             error: { 
@@ -406,23 +409,12 @@ async function createShipment(req, res, user) {
     }
 
     // Create appointment
-    console.log('Creating appointment:', appointmentNumber);
-    if (!appointmentNumber || typeof appointmentNumber !== 'string' || appointmentNumber.toString().trim().length === 0) {
-        console.error('Invalid appointmentNumber:', appointmentNumber);
-        return res.status(400).json({
-            success: false,
-            error: { 
-                code: 'INVALID_APPOINTMENT_NUMBER', 
-                message: 'Invalid appointmentNumber',
-                details: { receivedAppointmentNumber: appointmentNumber }
-            }
-        });
-    }
+    console.log('Creating appointment with shipmentId:', shipmentId);
     
     try {
         const appointmentData = {
-            appointmentId: appointmentNumber.toString(),
-            appointmentNumber: appointmentNumber.toString(),
+            appointmentId: shipmentId,
+            appointmentNumber: shipmentId,
             shipmentId: shipmentId,
             shipmentNumber: shipmentId,
             poId,
@@ -444,8 +436,8 @@ async function createShipment(req, res, user) {
         
         console.log('Appointment data to be created:', JSON.stringify(appointmentData, null, 2));
         
-        await db.collection('appointments').doc(appointmentNumber.toString()).set(appointmentData);
-        console.log('Appointment created successfully:', appointmentNumber);
+        await db.collection('appointments').doc(shipmentId).set(appointmentData);
+        console.log('Appointment created successfully:', shipmentId);
     } catch (error) {
         console.error('Failed to create appointment:', error);
         console.error('Error details:', error.message, error.code);
@@ -511,7 +503,7 @@ async function createShipment(req, res, user) {
         success: true,
         data: {
             shipmentId,
-            appointmentId: appointmentNumber,
+            appointmentId: shipmentId,
             message: 'Shipment and appointment created successfully'
         }
     });
