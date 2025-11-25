@@ -7,6 +7,7 @@ import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import ExcelImport from '../../components/Common/ExcelImport';
 import { Truck, Plus, Search, MapPin, Package, Calendar } from 'lucide-react';
+import { formatDate } from '../../lib/date-utils';
 
 const statusColors = {
     created: 'bg-gray-100 text-gray-800',
@@ -171,7 +172,7 @@ export default function Shipments() {
                                                 </div>
                                                 <div className="flex items-center space-x-2">
                                                     <Calendar className="w-4 h-4" />
-                                                    <span>{new Date(shipment.shipmentDate).toLocaleDateString()}</span>
+                                                    <span>{formatDate(shipment.shipmentDate)}</span>
                                                 </div>
                                             </div>
                                         </div>

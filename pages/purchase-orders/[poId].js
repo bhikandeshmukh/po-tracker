@@ -7,6 +7,7 @@ import { DetailSkeleton } from '../../components/Common/LoadingSkeleton';
 import { exportPOToPDF } from '../../lib/pdf-export';
 import { ArrowLeft, Edit, CheckCircle, XCircle, Package, Calendar, Building2, Truck, Activity, FileDown, Upload } from 'lucide-react';
 import ShipmentExcelImport from '../../components/Shipments/ShipmentExcelImport';
+import { formatDate } from '../../lib/date-utils';
 
 export default function PODetail() {
     const router = useRouter();
@@ -424,11 +425,11 @@ export default function PODetail() {
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-gray-600">PO Date</span>
-                                <span className="font-medium">{new Date(po.poDate).toLocaleDateString()}</span>
+                                <span className="font-medium">{formatDate(po.poDate)}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-gray-600">Expected Delivery</span>
-                                <span className="font-medium">{new Date(po.expectedDeliveryDate).toLocaleDateString()}</span>
+                                <span className="font-medium">{formatDate(po.expectedDeliveryDate)}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-gray-600">Total Items</span>

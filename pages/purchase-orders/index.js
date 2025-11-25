@@ -9,6 +9,7 @@ import apiClient from '../../lib/api-client';
 import POExcelImport from '../../components/PurchaseOrders/POExcelImport';
 import { TableSkeleton } from '../../components/Common/LoadingSkeleton';
 import { exportPOsToCSV } from '../../lib/pdf-export';
+import { formatDate } from '../../lib/date-utils';
 import { 
     Package, 
     Plus, 
@@ -402,7 +403,7 @@ export default function PurchaseOrders() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="text-sm text-gray-500">
-                                                            {new Date(order.poDate).toLocaleDateString()}
+                                                            {formatDate(order.poDate)}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
