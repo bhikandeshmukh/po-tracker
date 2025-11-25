@@ -1,29 +1,45 @@
-// Script to recalculate PO quantities based on actual shipments
-// Run this to fix incorrect quantities after manual database changes
+// API endpoint to recalculate PO quantities based on actual shipments
+// GET /api/admin/fix-po-quantities
 
-const admin = require('firebase-admin');
-const serviceAccount = require('../serviceAccountKey.json');
+import { db } from '../../../lib/firebase-admin';
+import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
 
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.cert(serviceAccount)
-    });
-}
-
-const db = admin.firestore();
-
-async function fixPOQuantities() {
-    console.log('Starting PO quantity fix...\n');
-
+export default async function handler(req, res) {
     try {
+        const user = await verifyAuth(req);
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+            });
+        }
+
+        // Only super_admin can run this
+        if (!await requireRole(user, ['super_admin'])) {
+            return res.status(403).json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Super admin access required' }
+            });
+        }
+
+        if (req.method !== 'POST') {
+            return res.status(405).json({
+                success: false,
+                error: { code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' }
+            });
+        }
+
+        console.log('Starting PO quantity fix...');
+        const results = [];
+
         // Get all POs
         const posSnapshot = await db.collection('purchaseOrders').get();
-        console.log(`Found ${posSnapshot.size} purchase orders\n`);
+        console.log(`Found ${posSnapshot.size} purchase orders`);
 
         for (const poDoc of posSnapshot.docs) {
             const poId = poDoc.id;
             const poData = poDoc.data();
-            console.log(`\nProcessing PO: ${poData.poNumber} (${poId})`);
+            console.log(`Processing PO: ${poData.poNumber} (${poId})`);
 
             // Get all PO items
             const poItemsSnapshot = await db.collection('purchaseOrders')
@@ -53,7 +69,7 @@ async function fixPOQuantities() {
                 .where('poId', '==', poId)
                 .get();
 
-            console.log(`  Found ${shipmentsSnapshot.size} shipments`);
+            console.log(`Found ${shipmentsSnapshot.size} shipments for PO ${poData.poNumber}`);
 
             // Calculate actual shipped quantities from shipments
             for (const shipmentDoc of shipmentsSnapshot.docs) {
@@ -71,7 +87,7 @@ async function fixPOQuantities() {
                     if (itemQuantities[itemId]) {
                         itemQuantities[itemId].shippedQuantity += shippedQty;
                     } else {
-                        console.warn(`  Warning: Item ${itemId} in shipment but not in PO`);
+                        console.warn(`Warning: Item ${itemId} in shipment but not in PO`);
                     }
                 }
             }
@@ -79,6 +95,7 @@ async function fixPOQuantities() {
             // Update PO items with correct quantities
             const batch = db.batch();
             let totalShippedQuantity = 0;
+            const itemUpdates = [];
 
             for (const [itemId, quantities] of Object.entries(itemQuantities)) {
                 const poItemRef = db.collection('purchaseOrders')
@@ -96,7 +113,12 @@ async function fixPOQuantities() {
 
                 totalShippedQuantity += quantities.shippedQuantity;
 
-                console.log(`  Item ${quantities.sku}: PO=${quantities.poQuantity}, Shipped=${quantities.shippedQuantity}, Pending=${pendingQty}`);
+                itemUpdates.push({
+                    sku: quantities.sku,
+                    poQuantity: quantities.poQuantity,
+                    shippedQuantity: quantities.shippedQuantity,
+                    pendingQuantity: pendingQty
+                });
             }
 
             // Calculate PO status
@@ -122,27 +144,37 @@ async function fixPOQuantities() {
                 updatedAt: new Date()
             });
 
-            console.log(`  PO Totals: Total=${totalPOQuantity}, Shipped=${totalShippedQuantity}, Pending=${totalPendingQuantity}`);
-            console.log(`  Status: ${poData.status} -> ${newStatus}`);
-
             await batch.commit();
-            console.log(`  ✓ Updated successfully`);
+
+            results.push({
+                poNumber: poData.poNumber,
+                poId,
+                oldStatus: poData.status,
+                newStatus,
+                oldShippedQty: poData.shippedQuantity || 0,
+                newShippedQty: totalShippedQuantity,
+                totalQuantity: totalPOQuantity,
+                pendingQuantity: totalPendingQuantity,
+                itemsUpdated: itemUpdates.length
+            });
+
+            console.log(`Updated PO ${poData.poNumber}: Shipped ${totalShippedQuantity}/${totalPOQuantity}, Status: ${newStatus}`);
         }
 
-        console.log('\n✓ All PO quantities fixed successfully!');
+        return res.status(200).json({
+            success: true,
+            message: 'PO quantities fixed successfully',
+            data: {
+                totalPOs: results.length,
+                results
+            }
+        });
+
     } catch (error) {
         console.error('Error fixing PO quantities:', error);
-        throw error;
+        return res.status(500).json({
+            success: false,
+            error: { code: 'SERVER_ERROR', message: error.message }
+        });
     }
 }
-
-// Run the script
-fixPOQuantities()
-    .then(() => {
-        console.log('\nScript completed successfully');
-        process.exit(0);
-    })
-    .catch((error) => {
-        console.error('\nScript failed:', error);
-        process.exit(1);
-    });
