@@ -336,6 +336,7 @@ async function createShipment(req, res, user) {
             .collection('items')
             .doc(safeDocId);
         
+        console.log(`Looking for PO item with docId: ${safeDocId} (from SKU: ${item.sku})`);
         const poItemDoc = await poItemRef.get();
         if (poItemDoc.exists) {
             const poItemData = poItemDoc.data();
@@ -343,11 +344,14 @@ async function createShipment(req, res, user) {
             const newShipped = currentShipped + (item.shippedQuantity || 0);
             const newPending = (poItemData.poQuantity || 0) - newShipped;
             
+            console.log(`Updating PO item ${safeDocId}: shipped ${currentShipped} -> ${newShipped}`);
             batch.update(poItemRef, {
                 shippedQuantity: newShipped,
                 pendingQuantity: Math.max(0, newPending),
                 updatedAt: new Date()
             });
+        } else {
+            console.warn(`PO item not found with docId: ${safeDocId} (SKU: ${item.sku})`);
         }
     }
     
@@ -414,27 +418,51 @@ async function createShipment(req, res, user) {
             }
         });
     }
-    await db.collection('appointments').doc(appointmentNumber.toString()).set({
-        appointmentId: appointmentNumber,
-        appointmentNumber,
-        shipmentId: shipmentId,
-        shipmentNumber: shipmentId,
-        poId,
-        poNumber: poData.poNumber,
-        vendorId: poData.vendorId,
-        vendorName: poData.vendorName,
-        transporterId,
-        transporterName: transporterData.transporterName || '',
-        totalQuantity,
-        totalItems: processedItems.length,
-        status: 'scheduled',
-        scheduledDate: new Date(calculatedDeliveryDate),
-        scheduledTimeSlot: '09:00-12:00',
-        deliveryLocation: shippingAddress || {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: user.uid
-    });
+    
+    try {
+        const appointmentData = {
+            appointmentId: appointmentNumber.toString(),
+            appointmentNumber: appointmentNumber.toString(),
+            shipmentId: shipmentId,
+            shipmentNumber: shipmentId,
+            poId,
+            poNumber: poData.poNumber,
+            vendorId: poData.vendorId || '',
+            vendorName: poData.vendorName || '',
+            transporterId,
+            transporterName: transporterData.transporterName || '',
+            totalQuantity,
+            totalItems: processedItems.length,
+            status: 'scheduled',
+            scheduledDate: new Date(calculatedDeliveryDate),
+            scheduledTimeSlot: '09:00-12:00',
+            deliveryLocation: shippingAddress || {},
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: user.uid
+        };
+        
+        console.log('Appointment data to be created:', JSON.stringify(appointmentData, null, 2));
+        
+        await db.collection('appointments').doc(appointmentNumber.toString()).set(appointmentData);
+        console.log('Appointment created successfully:', appointmentNumber);
+    } catch (error) {
+        console.error('Failed to create appointment:', error);
+        console.error('Error details:', error.message, error.code);
+        // Return error instead of silently failing
+        return res.status(500).json({
+            success: false,
+            error: { 
+                code: 'APPOINTMENT_CREATION_FAILED', 
+                message: `Shipment created but appointment creation failed: ${error.message}`,
+                details: { 
+                    shipmentId,
+                    appointmentNumber,
+                    errorMessage: error.message 
+                }
+            }
+        });
+    }
 
     // Create audit log with predictable ID
     const auditLogId = `SHIPMENT_CREATED_${shipmentId}`;
