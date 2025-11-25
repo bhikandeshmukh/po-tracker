@@ -232,9 +232,13 @@ async function createShipment(req, res, user) {
         totalQuantity += item.shippedQuantity;
         totalAmount += itemTotal + gstAmount;
 
+        // Create safe document ID from SKU (for Firestore compatibility)
+        const safeItemId = item.sku.replace(/[^a-zA-Z0-9-_]/g, '_');
+
         return {
             ...item,
-            itemId: item.sku,
+            itemId: safeItemId, // Safe ID for Firestore document
+            sku: item.sku, // Original SKU preserved
             receivedQuantity: 0,
             damagedQuantity: 0,
             gstAmount,
@@ -288,18 +292,26 @@ async function createShipment(req, res, user) {
             continue; // Skip this item
         }
         
-        // Save shipment item
+        // Use the safe itemId that was created in processedItems
+        const safeDocId = item.itemId;
+        
+        if (!safeDocId || safeDocId.length === 0) {
+            console.error('Invalid itemId for SKU:', item.sku);
+            continue;
+        }
+        
+        // Save shipment item (itemId and sku are already in item object)
         const shipmentItemRef = db.collection('shipments')
             .doc(shipmentId)
             .collection('items')
-            .doc(item.sku);
+            .doc(safeDocId);
         batch.set(shipmentItemRef, item);
         
         // Get current PO item to calculate new values
         const poItemRef = db.collection('purchaseOrders')
             .doc(poId)
             .collection('items')
-            .doc(item.sku);
+            .doc(safeDocId);
         
         const poItemDoc = await poItemRef.get();
         if (poItemDoc.exists) {
