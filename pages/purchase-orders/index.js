@@ -56,15 +56,16 @@ export default function PurchaseOrders() {
     const [prevCursors, setPrevCursors] = useState([]);
     const [pagination, setPagination] = useState(null);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     useEffect(() => {
         fetchOrders();
-    }, [statusFilter]);
+    }, [statusFilter, rowsPerPage]);
 
     const fetchOrders = async (cursor = null, direction = 'next') => {
         try {
             setLoading(true);
-            const params = { limit: 10 };
+            const params = { limit: rowsPerPage };
             if (statusFilter !== 'all') params.status = statusFilter;
             if (searchTerm) params.search = searchTerm;
             if (cursor) params.lastDocId = cursor;
@@ -458,21 +459,44 @@ export default function PurchaseOrders() {
                             {/* Pagination */}
                             {pagination && (pagination.hasMore || prevCursors.length > 0) && (
                                 <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                                    <div className="text-sm text-gray-500">
-                                        Showing {pagination.count} results
+                                    <div className="flex items-center space-x-4">
+                                        <div className="text-sm text-gray-500">
+                                            Showing {pagination.count} results
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <label htmlFor="rowsPerPage" className="text-sm text-gray-600">
+                                                Rows per page:
+                                            </label>
+                                            <select
+                                                id="rowsPerPage"
+                                                value={rowsPerPage}
+                                                onChange={(e) => {
+                                                    setRowsPerPage(Number(e.target.value));
+                                                    setPrevCursors([]);
+                                                    setNextCursor(null);
+                                                }}
+                                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            >
+                                                <option value={10}>10</option>
+                                                <option value={30}>30</option>
+                                                <option value={50}>50</option>
+                                                <option value={70}>70</option>
+                                                <option value={100}>100</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <button
                                             onClick={handlePrevPage}
                                             disabled={prevCursors.length === 0}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                                         >
                                             Previous
                                         </button>
                                         <button
                                             onClick={handleNextPage}
                                             disabled={!pagination.hasMore}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                                         >
                                             Next
                                         </button>
