@@ -121,46 +121,14 @@ export default function PODetail() {
     
     const handleShipmentImport = async (data) => {
         try {
-            // Clean and normalize data
+            // Keep data as-is from Excel - no modifications
             const cleanedData = data.map((row, index) => {
-                // Extract SKU - handle both formats
-                let sku = '';
-                let size = '';
-                let sentQty = 0;
-                
-                if (row.sku) {
-                    sku = row.sku.toString().trim();
-                }
-                
-                // Handle size column if present
-                if (row.size) {
-                    size = row.size.toString().trim();
-                    // If size looks like a number, it might be sentQty
-                    if (/^\d+$/.test(size)) {
-                        sentQty = parseInt(size);
-                        size = '';
-                    }
-                }
-                
-                // Extract sentQty
-                if (row.sentQty) {
-                    const qtyStr = row.sentQty.toString().trim();
-                    const qtyMatch = qtyStr.match(/\d+/);
-                    if (qtyMatch) {
-                        sentQty = parseInt(qtyMatch[0]);
-                    }
-                }
-                
-                // If SKU contains size info (like "RFKT0001-S"), append size
-                if (size && !sku.includes(size)) {
-                    sku = `${sku}-${size}`;
-                }
-                
                 return {
                     ...row,
-                    sku: sku,
-                    size: size,
-                    sentQty: sentQty,
+                    // Keep SKU exactly as provided in Excel - no parsing or changes
+                    sku: row.sku || '',
+                    // Parse sentQty as number
+                    sentQty: parseInt(row.sentQty) || 0,
                     rowIndex: index + 1
                 };
             });
@@ -171,7 +139,7 @@ export default function PODetail() {
                 if (!row.shipmentNumber) validationErrors.push(`Row ${row.rowIndex}: Missing shipmentNumber`);
                 if (!row.poNumber) validationErrors.push(`Row ${row.rowIndex}: Missing poNumber`);
                 if (!row.transporterId) validationErrors.push(`Row ${row.rowIndex}: Missing transporterId`);
-                if (!row.sku || row.sku.length === 0) validationErrors.push(`Row ${row.rowIndex}: Missing or empty SKU`);
+                if (!row.sku) validationErrors.push(`Row ${row.rowIndex}: Missing SKU`);
                 if (!row.sentQty || row.sentQty <= 0) validationErrors.push(`Row ${row.rowIndex}: Invalid sentQty (${row.sentQty})`);
             });
 
@@ -186,7 +154,7 @@ export default function PODetail() {
             
             cleanedData.forEach(row => {
                 // Skip rows with empty SKU
-                if (!row.sku || row.sku.length === 0) {
+                if (!row.sku) {
                     console.warn('Skipping row with empty SKU:', row);
                     return;
                 }
@@ -265,7 +233,7 @@ export default function PODetail() {
                     // Prepare shipment data for API with proper item details
                     // Filter out items with empty SKU
                     const validItems = shipment.items.filter(item => {
-                        if (!item.sku || !item.sku.toString().trim()) {
+                        if (!item.sku) {
                             console.warn('Skipping item with empty SKU in shipment:', shipment.shipmentNumber);
                             return false;
                         }
@@ -286,9 +254,10 @@ export default function PODetail() {
                         shippingAddress: {},
                         notes: shipment.notes,
                         items: validItems.map(item => {
+                            // Use SKU exactly as provided - no modifications
                             const poItem = poItemsMap[item.sku] || {};
                             return {
-                                sku: item.sku.toString().trim(),
+                                sku: item.sku, // Keep SKU as-is from Excel
                                 itemName: poItem.itemName || item.sku,
                                 shippedQuantity: item.sentQty,
                                 unitPrice: poItem.unitPrice || 0,
