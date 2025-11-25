@@ -150,18 +150,42 @@ export default function PODetail() {
                 try {
                     console.log('Creating shipment:', shipment);
                     
-                    // Get PO details and items
-                    const [poResponse, poItemsResponse] = await Promise.all([
-                        apiClient.getPOById(shipment.poNumber),
-                        apiClient.getPOItems(shipment.poNumber)
-                    ]);
+                    let actualPoId, poData, poItems;
                     
-                    if (!poResponse.success) {
-                        throw new Error('PO not found');
+                    // Check if this shipment is for the current PO
+                    if (po && po.poNumber === shipment.poNumber) {
+                        // Use current PO data
+                        actualPoId = poId;
+                        poData = po;
+                        poItems = items;
+                        console.log('Using current PO data:', actualPoId);
+                    } else {
+                        // Find the PO by poNumber to get the actual poId
+                        const posResponse = await apiClient.getPurchaseOrders({ limit: 1000 });
+                        if (!posResponse.success) {
+                            throw new Error('Failed to fetch POs');
+                        }
+                        
+                        const matchingPO = posResponse.data.find(p => p.poNumber === shipment.poNumber);
+                        if (!matchingPO) {
+                            throw new Error(`PO ${shipment.poNumber} not found`);
+                        }
+                        
+                        actualPoId = matchingPO.id || matchingPO.poId;
+                        
+                        // Get PO details and items using the actual poId
+                        const [poResponse, poItemsResponse] = await Promise.all([
+                            apiClient.getPOById(actualPoId),
+                            apiClient.getPOItems(actualPoId)
+                        ]);
+                        
+                        if (!poResponse.success) {
+                            throw new Error('PO not found');
+                        }
+                        
+                        poData = poResponse.data;
+                        poItems = poItemsResponse.success ? poItemsResponse.data : [];
                     }
-                    
-                    const poData = poResponse.data;
-                    const poItems = poItemsResponse.success ? poItemsResponse.data : [];
                     
                     // Create a map of PO items for quick lookup
                     const poItemsMap = {};
@@ -175,7 +199,7 @@ export default function PODetail() {
                     // Prepare shipment data for API with proper item details
                     const shipmentData = {
                         appointmentNumber: shipment.shipmentNumber,
-                        poId: shipment.poNumber,
+                        poId: actualPoId, // Use the actual document ID, not poNumber
                         transporterId: shipment.transporterId,
                         invoiceNumber: shipment.invoiceNumber,
                         shipmentDate: shipment.shipmentDate,

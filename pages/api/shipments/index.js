@@ -102,13 +102,35 @@ async function createShipment(req, res, user) {
     } = req.body;
 
     if (!appointmentNumber || !poId || !transporterId || !items || items.length === 0) {
+        const missingFields = [];
+        if (!appointmentNumber) missingFields.push('appointmentNumber');
+        if (!poId) missingFields.push('poId');
+        if (!transporterId) missingFields.push('transporterId');
+        if (!items || items.length === 0) missingFields.push('items');
+        
         return res.status(400).json({
             success: false,
-            error: { code: 'VALIDATION_ERROR', message: 'Missing required fields' }
+            error: { 
+                code: 'VALIDATION_ERROR', 
+                message: `Missing required fields: ${missingFields.join(', ')}`,
+                details: { missingFields }
+            }
         });
     }
 
     const shipmentId = appointmentNumber; // Same as appointment ID
+
+    // Validate poId format (should not be empty or just whitespace)
+    if (!poId || typeof poId !== 'string' || poId.trim().length === 0) {
+        return res.status(400).json({
+            success: false,
+            error: { 
+                code: 'INVALID_PO_ID', 
+                message: 'Invalid poId format. Expected a valid document ID, not a PO number.',
+                details: { receivedPoId: poId }
+            }
+        });
+    }
 
     // Check if shipment already exists
     const existingShipment = await db.collection('shipments').doc(shipmentId).get();
@@ -120,11 +142,28 @@ async function createShipment(req, res, user) {
     }
 
     // Get PO details
-    const poDoc = await db.collection('purchaseOrders').doc(poId).get();
+    let poDoc;
+    try {
+        poDoc = await db.collection('purchaseOrders').doc(poId).get();
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            error: { 
+                code: 'INVALID_PO_ID', 
+                message: `Invalid poId: ${error.message}. Make sure you're passing the document ID, not the PO number.`,
+                details: { receivedPoId: poId }
+            }
+        });
+    }
+    
     if (!poDoc.exists) {
         return res.status(404).json({
             success: false,
-            error: { code: 'PO_NOT_FOUND', message: 'Purchase order not found' }
+            error: { 
+                code: 'PO_NOT_FOUND', 
+                message: `Purchase order with ID '${poId}' not found. Make sure you're using the document ID, not the PO number.`,
+                details: { receivedPoId: poId }
+            }
         });
     }
 

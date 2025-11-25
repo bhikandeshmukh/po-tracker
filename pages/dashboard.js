@@ -16,7 +16,8 @@ import {
     AlertCircle,
     Clock,
     IndianRupee,
-    Users
+    Users,
+    RefreshCw
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -25,58 +26,58 @@ export default function Dashboard() {
     const [metrics, setMetrics] = useState(null);
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
+    const fetchDashboardData = async (forceRefresh = false) => {
+        try {
+            setError(null);
+            if (forceRefresh && !loading) setRefreshing(true);
+            
+            console.log('Fetching dashboard data...', forceRefresh ? '(forced refresh)' : '');
+            const [metricsRes, activitiesRes] = await Promise.all([
+                apiClient.getDashboardMetrics(forceRefresh),
+                apiClient.getRecentActivities({ limit: 10 })
+            ]);
+
+            console.log('Metrics response:', metricsRes);
+            console.log('Activities response:', activitiesRes);
+
+            if (metricsRes.success) {
+                setMetrics(metricsRes.data);
+                console.log('Metrics set:', metricsRes.data);
+            } else {
+                console.error('Metrics fetch failed:', metricsRes.error);
+            }
+            
+            if (activitiesRes.success) {
+                setActivities(activitiesRes.data);
+            } else {
+                console.error('Activities fetch failed:', activitiesRes.error);
+            }
+        } catch (error) {
+            console.error('Failed to fetch dashboard data:', error);
+            setError(error.message);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
     useEffect(() => {
-        let isMounted = true;
         let refreshInterval;
 
-        const fetchDashboardData = async () => {
-            try {
-                if (isMounted) setError(null);
-                
-                console.log('Fetching dashboard data...');
-                const [metricsRes, activitiesRes] = await Promise.all([
-                    apiClient.getDashboardMetrics(),
-                    apiClient.getRecentActivities({ limit: 10 })
-                ]);
-
-                console.log('Metrics response:', metricsRes);
-                console.log('Activities response:', activitiesRes);
-
-                if (isMounted) {
-                    if (metricsRes.success) {
-                        setMetrics(metricsRes.data);
-                        console.log('Metrics set:', metricsRes.data);
-                    } else {
-                        console.error('Metrics fetch failed:', metricsRes.error);
-                    }
-                    
-                    if (activitiesRes.success) {
-                        setActivities(activitiesRes.data);
-                    } else {
-                        console.error('Activities fetch failed:', activitiesRes.error);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch dashboard data:', error);
-                if (isMounted) setError(error.message);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-
         if (user) {
-            fetchDashboardData();
+            // Force refresh on initial load
+            fetchDashboardData(true);
             
             // Auto-refresh every 30 seconds
             refreshInterval = setInterval(() => {
-                fetchDashboardData();
+                fetchDashboardData(true);
             }, 30000);
         }
 
         return () => {
-            isMounted = false;
             if (refreshInterval) {
                 clearInterval(refreshInterval);
             }
@@ -115,13 +116,23 @@ export default function Dashboard() {
         <Layout>
             <div className="space-y-6">
                 {/* Header */}
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Welcome back, {user?.name || 'User'}!
-                    </h1>
-                    <p className="text-gray-600 mt-1">
-                        Here's what's happening with your purchase orders today.
-                    </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            Welcome back, {user?.name || 'User'}!
+                        </h1>
+                        <p className="text-gray-600 mt-1">
+                            Here's what's happening with your purchase orders today.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => fetchDashboardData(true)}
+                        disabled={refreshing}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
                 </div>
 
                 {/* Stats Grid */}
