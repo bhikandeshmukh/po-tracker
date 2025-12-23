@@ -1,5 +1,6 @@
 // pages/api/auth/register.js
 // Register API using Firebase Email Authentication
+// Updated: Force redeploy
 
 import { auth, db } from '../../../lib/firebase-admin';
 import { validateData, registerSchema } from '../../../lib/validators';
