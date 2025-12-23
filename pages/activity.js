@@ -147,7 +147,7 @@ export default function ActivityPage() {
                                                         {activity.timestamp && (
                                                             <span className="flex items-center space-x-1">
                                                                 <Clock className="w-3 h-3" />
-                                                                <span>{new Date(activity.timestamp).toLocaleString()}</span>
+                                                                <span>{new Date(activity.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                                                             </span>
                                                         )}
                                                         {activity.type && (
