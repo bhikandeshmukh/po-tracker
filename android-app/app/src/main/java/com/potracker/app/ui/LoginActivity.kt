@@ -17,12 +17,17 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        auth = FirebaseAuth.getInstance()
-        
-        // Check if already logged in
-        if (auth.currentUser != null) {
-            goToMain()
-            return
+        try {
+            auth = FirebaseAuth.getInstance()
+            
+            // Check if already logged in
+            if (auth.currentUser != null) {
+                goToMain()
+                return
+            }
+        } catch (e: Exception) {
+            // Firebase not configured, show demo message
+            Toast.makeText(this, "Demo mode - Firebase not configured", Toast.LENGTH_LONG).show()
         }
         
         binding.btnLogin.setOnClickListener { login() }
@@ -40,15 +45,29 @@ class LoginActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
         binding.btnLogin.isEnabled = false
         
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                goToMain()
-            }
-            .addOnFailureListener { e ->
+        try {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener {
+                    goToMain()
+                }
+                .addOnFailureListener { e ->
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnLogin.isEnabled = true
+                    Toast.makeText(this, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+        } catch (e: Exception) {
+            // Firebase not configured, simulate login for demo
+            binding.root.postDelayed({
                 binding.progressBar.visibility = View.GONE
                 binding.btnLogin.isEnabled = true
-                Toast.makeText(this, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
-            }
+                if (email == "demo@test.com" && password == "123456") {
+                    Toast.makeText(this, "Demo login successful!", Toast.LENGTH_SHORT).show()
+                    goToMain()
+                } else {
+                    Toast.makeText(this, "Demo mode: Use demo@test.com / 123456", Toast.LENGTH_LONG).show()
+                }
+            }, 1000)
+        }
     }
     
     private fun goToMain() {

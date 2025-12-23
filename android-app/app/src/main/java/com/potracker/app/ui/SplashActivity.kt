@@ -18,14 +18,18 @@ class SplashActivity : AppCompatActivity() {
         lifecycleScope.launch {
             delay(2000) // Show splash for 2 seconds
             
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            val intent = if (currentUser != null) {
-                Intent(this@SplashActivity, MainActivity::class.java)
-            } else {
-                Intent(this@SplashActivity, LoginActivity::class.java)
+            try {
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                val intent = if (currentUser != null) {
+                    Intent(this@SplashActivity, MainActivity::class.java)
+                } else {
+                    Intent(this@SplashActivity, LoginActivity::class.java)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                // If Firebase fails, go to login
+                startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
             }
-            
-            startActivity(intent)
             finish()
         }
     }

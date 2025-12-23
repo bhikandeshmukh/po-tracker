@@ -46,7 +46,12 @@ class MainActivity : AppCompatActivity() {
     private fun setupToolbar() {
         binding.toolbar.title = "PO Tracker"
         binding.btnLogout.setOnClickListener {
-            FirebaseAuth.getInstance().signOut()
+            try {
+                FirebaseAuth.getInstance().signOut()
+            } catch (e: Exception) {
+                // Firebase not configured, just show message
+                Toast.makeText(this, "Logged out (demo mode)", Toast.LENGTH_SHORT).show()
+            }
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
