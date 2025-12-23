@@ -19,7 +19,7 @@ android {
 
     buildTypes {
         release {
-            applicationId "com.potracker.acpl.pro"
+            applicationIdSuffix ".pro"
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -27,7 +27,7 @@ android {
             versionNameSuffix "-pro"
         }
         debug {
-            applicationId "com.potracker.acpl.dev"
+            applicationIdSuffix ".dev"
             minifyEnabled false
             debuggable true
             versionNameSuffix "-dev"
