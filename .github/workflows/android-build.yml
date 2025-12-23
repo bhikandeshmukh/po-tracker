@@ -170,10 +170,11 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x android-app/gradlew
 
-    - name: Clean project
+    - name: Clean project and caches
       run: |
         cd android-app
         ./gradlew clean --no-daemon
+        rm -rf ~/.gradle/caches/
       env:
         SKIP_JDK_VERSION_CHECK: true
 
