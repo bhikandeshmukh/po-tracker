@@ -34,10 +34,15 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Create Gradle Wrapper
+    - name: Generate Gradle Wrapper JAR
       run: |
         cd android-app
-        gradle wrapper --gradle-version 8.2 --distribution-type bin
+        # Create gradle wrapper jar from scratch
+        mkdir -p gradle/wrapper
+        # Download gradle wrapper jar directly
+        curl -L https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+        # Verify the jar file
+        ls -la gradle/wrapper/
 
     - name: Create google-services.json
       run: |
