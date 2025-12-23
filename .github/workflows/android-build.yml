@@ -24,25 +24,9 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-      env:
-        SKIP_JDK_VERSION_CHECK: true
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Generate Gradle Wrapper JAR
-      run: |
-        cd android-app
-        # Create gradle wrapper jar from scratch
-        mkdir -p gradle/wrapper
-        # Download gradle wrapper jar directly
-        curl -L https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
-        # Verify the jar file
-        ls -la gradle/wrapper/
 
     - name: Create google-services.json
       run: |
@@ -85,22 +69,28 @@ jobs:
         EOF
         fi
 
-    - name: Grant execute permission for gradlew
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Make gradlew executable
       run: chmod +x android-app/gradlew
 
     - name: Build Debug APK
       run: |
         cd android-app
-        ./gradlew assembleDebug --stacktrace
-      env:
-        SKIP_JDK_VERSION_CHECK: true
+        ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
       run: |
         cd android-app
-        ./gradlew assembleRelease --stacktrace
-      env:
-        SKIP_JDK_VERSION_CHECK: true
+        ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
