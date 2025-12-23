@@ -1,14 +1,17 @@
 # PO Tracker Android App
 
-Android app for PO Tracker with Firebase Firestore integration.
+Professional Android application for Purchase Order tracking with Firebase Firestore integration.
 
-## Features
+## 🚀 Features
 
 - **Purchase Orders**: View all POs, status, quantities, approve/cancel
 - **Shipments**: Track shipments, update status, LR/Docket, Invoice
 - **Appointments**: View appointments, toggle email sent status
 - **Comments**: Add comments/logs to POs
 - **Real-time sync**: Direct Firebase Firestore integration
+- **Demo Mode**: Works without Firebase configuration (demo@test.com / 123456)
+- **Professional UI**: Material Design 3 with splash screen
+- **Auto-build**: GitHub Actions CI/CD with APK generation
 
 ## Setup
 
@@ -44,10 +47,19 @@ APK will be at: `app/build/outputs/apk/debug/app-debug.apk`
 4. **Shipment Detail**: Info, status update, edit LR/Invoice
 5. **Appointment Detail**: Info, email sent toggle
 
-## Tech Stack
+## 📱 App Details
 
-- Kotlin
-- Firebase Firestore & Auth
-- Material Design 3
-- Coroutines
-- ViewBinding
+- **Package**: `com.potracker.app`
+- **Min SDK**: 21 (Android 5.0+)
+- **Target SDK**: 33 (Android 13)
+- **Version**: 1.0.0
+- **Architecture**: MVVM with Repository pattern
+
+## 🔧 Tech Stack
+
+- **Language**: Kotlin 1.7.22
+- **Build**: Gradle 7.4.2, Android Gradle Plugin 7.3.1
+- **Backend**: Firebase Firestore & Auth (BOM 30.3.1)
+- **UI**: Material Design 3, ViewBinding
+- **Async**: Coroutines, Lifecycle-aware components
+- **Build Features**: ProGuard optimization, Resource shrinking
