@@ -31,13 +31,13 @@ jobs:
       env:
         SKIP_JDK_VERSION_CHECK: true
 
-    - name: Download Gradle Wrapper
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Create Gradle Wrapper
       run: |
         cd android-app
-        curl -L https://services.gradle.org/distributions/gradle-8.2-bin.zip -o gradle.zip
-        unzip -q gradle.zip
-        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
-        rm -rf gradle-8.2 gradle.zip
+        gradle wrapper --gradle-version 8.2 --distribution-type bin
 
     - name: Create google-services.json
       run: |
