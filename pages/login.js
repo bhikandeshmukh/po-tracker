@@ -91,6 +91,7 @@ export default function Login() {
                                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                                         placeholder="you@example.com"
                                         required
+                                        autoComplete="email"
                                     />
                                 </div>
                             </div>
@@ -108,6 +109,7 @@ export default function Login() {
                                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                                         placeholder="••••••••"
                                         required
+                                        autoComplete="current-password"
                                     />
                                 </div>
                             </div>

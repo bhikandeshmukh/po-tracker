@@ -389,6 +389,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     required
+                                    autoComplete="given-name"
                                 />
                             </div>
                             <div>
@@ -401,6 +402,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     required
+                                    autoComplete="family-name"
                                 />
                             </div>
                         </div>
@@ -415,6 +417,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 required
+                                autoComplete="email"
                             />
                         </div>
 
@@ -429,6 +432,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                 placeholder="+919876543210"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 required
+                                autoComplete="tel"
                             />
                         </div>
 
@@ -443,6 +447,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 required
                                 minLength={6}
+                                autoComplete="new-password"
                             />
                             <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
                         </div>
