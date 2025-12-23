@@ -7,7 +7,7 @@
 -keep class com.google.android.gms.** { *; }
 
 # Keep model classes
--keep class com.potracker.app.models.** { *; }
+-keep class com.potracker.acpl.models.** { *; }
 
 # Keep Kotlin coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
