@@ -9,6 +9,13 @@ import { applyRateLimit, authLimiter } from '../../../lib/rate-limiter';
 export default async function handler(req, res) {
     const startTime = Date.now();
 
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        return res.status(200).end();
+    }
+
     // Apply rate limiting
     try {
         await applyRateLimit(authLimiter)(req, res);
@@ -18,11 +25,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') {
+        res.setHeader('Allow', ['POST', 'OPTIONS']);
         return res.status(405).json({
             success: false,
             error: {
                 code: 'METHOD_NOT_ALLOWED',
-                message: 'Method not allowed'
+                message: `Method ${req.method} not allowed. Use POST.`
             }
         });
     }
