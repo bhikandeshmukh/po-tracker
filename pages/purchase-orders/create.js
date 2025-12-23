@@ -18,7 +18,6 @@ export default function CreatePurchaseOrder() {
         vendorWarehouseId: '',
         poDate: new Date().toISOString().substring(0, 10),
         expectedDelivery: '',
-        cancelledDate: '',
         status: 'draft',
         notes: '',
         items: []
@@ -38,14 +37,10 @@ export default function CreatePurchaseOrder() {
             notes: formData.notes || '',
             termsAndConditions: '',
             items: formData.items.map(item => ({
-                sku: item.sku,
-                itemName: item.itemName || item.sku,
                 poQuantity: parseInt(item.poQty) || 0,
-                unitPrice: parseFloat(item.price) || 0,
-                gstRate: parseFloat(item.gstRate) || 18,
-                mrp: parseFloat(item.mrp) || 0,
                 shippedQuantity: parseInt(item.qtySent) || 0,
-                pendingQuantity: parseInt(item.qtyPending) || 0
+                pendingQuantity: parseInt(item.qtyPending) || 0,
+                deliveredQuantity: parseInt(item.deliveredQty) || 0
             }))
         };
         

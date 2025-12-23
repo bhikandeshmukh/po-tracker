@@ -21,52 +21,40 @@ export default function ShipmentDetail() {
             if (response.success) {
                 let shipmentData = response.data;
                 
-                // Fetch appointment data to get LR docket number
-                if (shipmentData.appointmentId) {
+                // Fetch PO data to get warehouse info
+                if (shipmentData.poId) {
                     try {
-                        const appointmentResponse = await apiClient.getAppointmentById(shipmentData.appointmentId);
-                        if (appointmentResponse.success) {
-                            // Merge appointment data
-                            shipmentData = {
-                                ...shipmentData,
-                                lrDocketNumber: appointmentResponse.data.lrDocketNumber,
-                                scheduledTimeSlot: appointmentResponse.data.scheduledTimeSlot
-                            };
+                        const poResponse = await apiClient.getPOById(shipmentData.poId);
+                        if (poResponse.success) {
+                            shipmentData.vendorWarehouseName = poResponse.data.vendorWarehouseName;
+                            shipmentData.vendorWarehouseId = poResponse.data.vendorWarehouseId;
                         }
                     } catch (err) {
-                        console.error('Failed to fetch appointment:', err);
+                        console.error('Failed to fetch PO:', err);
                     }
                 }
                 
-                // Auto-fix: If shipmentId/shipmentNumber doesn't match document ID, fix it
-                if (shipmentData.shipmentId !== shipmentId || shipmentData.shipmentNumber !== shipmentId) {
-                    console.warn('Shipment data inconsistency detected, auto-fixing...');
-                    try {
-                        await apiClient.updateShipment(shipmentId, {
-                            shipmentId: shipmentId,
-                            shipmentNumber: shipmentId
-                        });
-                        // Refetch to get updated data
-                        const updatedResponse = await apiClient.getShipmentById(shipmentId);
-                        if (updatedResponse.success) {
-                            setShipment(updatedResponse.data);
-                            if (updatedResponse.data.items) {
-                                setItems(updatedResponse.data.items);
-                            }
-                        }
-                    } catch (fixError) {
-                        console.error('Failed to auto-fix shipment data:', fixError);
-                        // Still show the data even if fix failed
-                        setShipment(shipmentData);
-                        if (shipmentData.items) {
-                            setItems(shipmentData.items);
-                        }
+                // Fetch appointment data to get any missing fields
+                const appointmentId = shipmentData.appointmentId || shipmentId;
+                try {
+                    const appointmentResponse = await apiClient.getAppointmentById(appointmentId);
+                    if (appointmentResponse.success) {
+                        const appointmentData = appointmentResponse.data;
+                        // Use shipment data first, fallback to appointment data
+                        shipmentData = {
+                            ...shipmentData,
+                            lrDocketNumber: shipmentData.lrDocketNumber || appointmentData.lrDocketNumber,
+                            invoiceNumber: shipmentData.invoiceNumber || appointmentData.invoiceNumber,
+                            scheduledTimeSlot: shipmentData.scheduledTimeSlot || appointmentData.scheduledTimeSlot
+                        };
                     }
-                } else {
-                    setShipment(shipmentData);
-                    if (shipmentData.items) {
-                        setItems(shipmentData.items);
-                    }
+                } catch (err) {
+                    console.error('Failed to fetch appointment:', err);
+                }
+                
+                setShipment(shipmentData);
+                if (shipmentData.items) {
+                    setItems(shipmentData.items);
                 }
             }
         } catch (error) {
@@ -163,6 +151,13 @@ export default function ShipmentDetail() {
                             </div>
                         </div>
                         <div className="flex items-start space-x-3">
+                            <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                            <div>
+                                <p className="text-sm text-gray-500">Warehouse</p>
+                                <p className="font-medium">{shipment.vendorWarehouseName || shipment.vendorWarehouseId || '-'}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
                             <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
                                 <p className="text-sm text-gray-500">Expected Delivery</p>
@@ -182,18 +177,16 @@ export default function ShipmentDetail() {
                             <Package className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
                                 <p className="text-sm text-gray-500">Invoice Number</p>
-                                <p className="font-medium">{shipment.invoiceNumber || 'N/A'}</p>
+                                <p className="font-medium">{shipment.invoiceNumber || '-'}</p>
                             </div>
                         </div>
-                        {shipment.lrDocketNumber && (
-                            <div className="flex items-start space-x-3">
-                                <Package className="w-5 h-5 text-gray-400 mt-0.5" />
-                                <div>
-                                    <p className="text-sm text-gray-500">LR Docket Number</p>
-                                    <p className="font-medium">{shipment.lrDocketNumber}</p>
-                                </div>
+                        <div className="flex items-start space-x-3">
+                            <Package className="w-5 h-5 text-gray-400 mt-0.5" />
+                            <div>
+                                <p className="text-sm text-gray-500">LR Docket Number</p>
+                                <p className="font-medium">{shipment.lrDocketNumber || '-'}</p>
                             </div>
-                        )}
+                        </div>
                         <div className="flex items-start space-x-3">
                             <Package className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
@@ -360,23 +353,17 @@ export default function ShipmentDetail() {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice No</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shipped Qty</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered Qty</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {(showAllItems ? items : items.slice(0, 5)).map((item, idx) => (
                                             <tr key={idx}>
-                                                <td className="px-4 py-3 text-sm text-gray-900">{item.sku || item.itemId}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900">{item.itemName}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.shippedQuantity}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-900 text-right">₹{item.unitPrice}</td>
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                                                    ₹{(item.shippedQuantity * item.unitPrice).toFixed(2)}
-                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{shipment.invoiceNumber || '-'}</td>
+                                                <td className="px-4 py-3 text-sm text-green-600 text-right">{item.shippedQuantity}</td>
+                                                <td className="px-4 py-3 text-sm text-blue-600 text-right">{item.deliveredQuantity || 0}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -398,20 +385,10 @@ export default function ShipmentDetail() {
                     {/* Totals */}
                     {items.length > 0 && (
                         <div className="mt-6 pt-6 border-t border-gray-200">
-                            <div className="flex justify-end space-x-12">
+                            <div className="flex justify-end">
                                 <div className="text-right">
                                     <p className="text-sm text-gray-500">Total Shipped Qty</p>
-                                    <p className="text-lg font-semibold text-gray-900">{shipment.totalQuantity || 0}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-500">GST Amount</p>
-                                    <p className="text-lg font-semibold text-gray-900">₹{shipment.totalGST?.toFixed(2) || '0.00'}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-500">Invoice Value</p>
-                                    <p className="text-2xl font-bold text-indigo-600">
-                                        ₹{shipment.invoiceValue?.toFixed(2) || shipment.totalAmount?.toFixed(2) || '0.00'}
-                                    </p>
+                                    <p className="text-2xl font-bold text-indigo-600">{shipment.totalQuantity || 0}</p>
                                 </div>
                             </div>
                         </div>

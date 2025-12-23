@@ -1,5 +1,5 @@
 // pages/api/dashboard/metrics.js
-// Get dashboard metrics
+// Get dashboard metrics - Quantity based
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth } from '../../../lib/auth-middleware';
@@ -26,39 +26,8 @@ export default async function handler(req, res) {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
-        const { refresh } = req.query;
-
-        // Check if we should use cached metrics (only if not forced refresh)
-        if (!refresh) {
-            const metricsDoc = await db.collection('dashboardMetrics').doc('overview').get();
-            
-            if (metricsDoc.exists) {
-                const data = metricsDoc.data();
-                const lastUpdated = data.lastUpdated?.toDate();
-                const now = new Date();
-                const cacheAge = now - lastUpdated;
-                
-                // Use cached data if less than 30 seconds old
-                if (cacheAge < 30000) {
-                    return res.status(200).json({
-                        success: true,
-                        data: {
-                            ...data,
-                            lastUpdated: lastUpdated?.toISOString()
-                        }
-                    });
-                }
-            }
-        }
-
-        // Calculate fresh metrics
+        // Always calculate fresh metrics from actual data
         const metrics = await calculateMetrics();
-
-        // Save metrics with timestamp
-        await db.collection('dashboardMetrics').doc('overview').set({
-            ...metrics,
-            lastUpdated: new Date()
-        });
 
         return res.status(200).json({
             success: true,
@@ -77,60 +46,81 @@ export default async function handler(req, res) {
 }
 
 async function calculateMetrics() {
-    // Get counts for各 collections
-    const [
-        posSnapshot,
-        activePosSnapshot,
-        shipmentsSnapshot,
-        inTransitSnapshot,
-        deliveredSnapshot,
-        returnsSnapshot,
-        vendorsSnapshot,
-        activeVendorsSnapshot,
-        transportersSnapshot
-    ] = await Promise.all([
+    // Get all POs and shipments
+    const [posSnapshot, shipmentsSnapshot] = await Promise.all([
         db.collection('purchaseOrders').get(),
-        db.collection('purchaseOrders').where('status', 'in', ['approved', 'partially_shipped']).get(),
-        db.collection('shipments').get(),
-        db.collection('shipments').where('status', '==', 'in_transit').get(),
-        db.collection('shipments').where('status', '==', 'delivered').get(),
-        db.collection('returnOrders').get(),
-        db.collection('vendors').get(),
-        db.collection('vendors').where('isActive', '==', true).get(),
-        db.collection('transporters').get()
+        db.collection('shipments').get()
     ]);
 
-    // Calculate totals
-    let totalPOAmount = 0;
+    // Calculate quantity totals from POs
+    let totalOrderQty = 0;
+    let totalShippedQty = 0;
+    let totalPendingQty = 0;
+    let totalDeliveredQty = 0;
+
     posSnapshot.docs.forEach(doc => {
-        totalPOAmount += doc.data().grandTotal || 0;
+        const data = doc.data();
+        totalOrderQty += data.totalQuantity || 0;
+        totalShippedQty += data.shippedQuantity || 0;
+        totalPendingQty += (data.totalQuantity || 0) - (data.shippedQuantity || 0);
     });
 
-    let totalReturnAmount = 0;
-    returnsSnapshot.docs.forEach(doc => {
-        totalReturnAmount += doc.data().totalAmount || 0;
+    // Calculate shipment status counts and delivered qty
+    let inTransitShipments = 0;
+    let deliveredShipments = 0;
+    let pendingShipments = 0;
+    let createdShipments = 0;
+
+    shipmentsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const status = data.status;
+        
+        if (status === 'in_transit') {
+            inTransitShipments++;
+        } else if (status === 'delivered') {
+            deliveredShipments++;
+            totalDeliveredQty += data.totalQuantity || 0;
+        } else if (status === 'pending') {
+            pendingShipments++;
+        } else if (status === 'created') {
+            createdShipments++;
+            pendingShipments++; // Count created as pending too
+        }
+    });
+
+    // Count PO by status
+    let activePOs = 0;
+    let completedPOs = 0;
+    let pendingPOs = 0;
+
+    posSnapshot.docs.forEach(doc => {
+        const status = doc.data().status;
+        if (['approved', 'partial_sent'].includes(status)) activePOs++;
+        if (['completed', 'partial_completed'].includes(status)) completedPOs++;
+        if (status === 'pending' || status === 'draft') pendingPOs++;
     });
 
     return {
+        // Quantity metrics (for top KPIs)
+        totalOrderQty,
+        totalShippedQty,
+        totalPendingQty: Math.max(0, totalPendingQty),
+        totalDeliveredQty,
+        
+        // PO count metrics
         totalPOs: posSnapshot.size,
-        activePOs: activePosSnapshot.size,
-        pendingApprovalPOs: 0, // Calculate separately if needed
-        totalPOAmount,
-        thisMonthPOAmount: 0, // Calculate separately
+        activePOs,
+        completedPOs,
+        pendingPOs,
+        
+        // Shipment count metrics
         totalShipments: shipmentsSnapshot.size,
-        inTransitShipments: inTransitSnapshot.size,
-        deliveredShipments: deliveredSnapshot.size,
-        pendingShipments: shipmentsSnapshot.size - deliveredSnapshot.size,
-        todayAppointments: 0, // Calculate separately
-        upcomingAppointments: 0, // Calculate separately
-        completedAppointments: 0, // Calculate separately
-        totalReturns: returnsSnapshot.size,
-        pendingReturns: 0, // Calculate separately
-        completedReturns: 0, // Calculate separately
-        totalReturnAmount,
-        totalVendors: vendorsSnapshot.size,
-        activeVendors: activeVendorsSnapshot.size,
-        totalTransporters: transportersSnapshot.size,
-        activeTransporters: 0 // Calculate separately
+        inTransitShipments,
+        deliveredShipments,
+        pendingShipments,
+        
+        // For backward compatibility
+        totalPOAmount: 0,
+        totalReturnAmount: 0
     };
 }

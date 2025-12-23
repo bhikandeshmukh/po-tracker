@@ -58,22 +58,11 @@ export default async function handler(req, res) {
             updatedBy: user.uid
         });
 
-        // Update linked appointment status (same ID)
+        // Update linked appointment status (same status as shipment)
         const appointmentDoc = await db.collection('appointments').doc(shipmentId).get();
         if (appointmentDoc.exists) {
-            // Map shipment status to appointment status
-            const appointmentStatusMap = {
-                'created': 'scheduled',
-                'pending': 'scheduled',
-                'in_transit': 'confirmed',
-                'delivered': 'completed',
-                'cancelled': 'cancelled'
-            };
-            
-            const appointmentStatus = appointmentStatusMap[status] || 'scheduled';
-            
             await db.collection('appointments').doc(shipmentId).update({
-                status: appointmentStatus,
+                status: status,
                 updatedAt: new Date(),
                 updatedBy: user.uid
             });
@@ -137,7 +126,7 @@ export default async function handler(req, res) {
                     const poItemRef = db.collection('purchaseOrders')
                         .doc(shipmentData.poId)
                         .collection('items')
-                        .doc(item.sku);
+                        .doc(item.itemId || itemDoc.id);
                     
                     batch.update(poItemRef, {
                         receivedQuantity: (item.receivedQuantity || 0) + (item.shippedQuantity || 0),

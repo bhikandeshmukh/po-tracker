@@ -15,7 +15,6 @@ import {
     Truck, 
     AlertCircle,
     Clock,
-    IndianRupee,
     Users,
     RefreshCw
 } from 'lucide-react';
@@ -138,51 +137,51 @@ export default function Dashboard() {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
-                        title="Total Purchase Orders"
-                        value={metrics?.totalPOs || 0}
+                        title="Total Order Qty"
+                        value={metrics?.totalOrderQty || 0}
                         change="+12.5%"
                         trend="up"
                         icon={Package}
                         color="blue"
                     />
                     <StatCard
-                        title="Active Shipments"
-                        value={metrics?.inTransitShipments || 0}
+                        title="Shipped Qty"
+                        value={metrics?.totalShippedQty || 0}
                         change="+8.2%"
                         trend="up"
                         icon={Truck}
                         color="green"
                     />
                     <StatCard
-                        title="Pending Approvals"
-                        value={metrics?.pendingApprovalPOs || 0}
+                        title="Pending Qty"
+                        value={metrics?.totalPendingQty || 0}
                         change="-3.1%"
                         trend="down"
                         icon={Clock}
                         color="yellow"
                     />
                     <StatCard
-                        title="Total Value"
-                        value={`₹${(metrics?.totalPOAmount / 100000 || 0).toFixed(1)}L`}
+                        title="Delivered Qty"
+                        value={metrics?.totalDeliveredQty || 0}
                         change="+15.3%"
                         trend="up"
-                        icon={IndianRupee}
+                        icon={Package}
                         color="purple"
                     />
                 </div>
 
                 {/* Charts and Activity */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Sales Chart */}
+                    {/* Quantity Chart */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-[500px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h2 className="text-lg font-semibold text-gray-900">
-                                        Purchase Order Trends
+                                        Quantity Trends
                                     </h2>
                                     <p className="text-sm text-gray-600 mt-1">
-                                        Monthly overview of PO values
+                                        Monthly overview of Order vs Shipped vs Delivered
                                     </p>
                                 </div>
                                 <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
@@ -279,37 +278,37 @@ export default function Dashboard() {
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">Active</span>
-                                <span className="font-semibold text-blue-600">{metrics?.activePOs || 0}</span>
+                                <span className="text-sm text-gray-600">Total POs</span>
+                                <span className="font-semibold text-blue-600">{metrics?.totalPOs || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">Pending Approval</span>
-                                <span className="font-semibold text-yellow-600">{metrics?.pendingApprovalPOs || 0}</span>
+                                <span className="text-sm text-gray-600">Active</span>
+                                <span className="font-semibold text-yellow-600">{metrics?.activePOs || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-600">Completed</span>
-                                <span className="font-semibold text-green-600">{(metrics?.totalPOs || 0) - (metrics?.activePOs || 0)}</span>
+                                <span className="font-semibold text-green-600">{metrics?.completedPOs || 0}</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-gray-900">Returns</h3>
-                            <AlertCircle className="w-5 h-5 text-gray-400" />
+                            <h3 className="font-semibold text-gray-900">Quantity Summary</h3>
+                            <Package className="w-5 h-5 text-gray-400" />
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">Pending</span>
-                                <span className="font-semibold text-yellow-600">{metrics?.pendingReturns || 0}</span>
+                                <span className="text-sm text-gray-600">Total Ordered</span>
+                                <span className="font-semibold text-blue-600">{metrics?.totalOrderQty || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">Completed</span>
-                                <span className="font-semibold text-green-600">{metrics?.completedReturns || 0}</span>
+                                <span className="text-sm text-gray-600">Total Shipped</span>
+                                <span className="font-semibold text-green-600">{metrics?.totalShippedQty || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">Total Value</span>
-                                <span className="font-semibold text-red-600">₹{((metrics?.totalReturnAmount || 0) / 1000).toFixed(0)}K</span>
+                                <span className="text-sm text-gray-600">Total Delivered</span>
+                                <span className="font-semibold text-purple-600">{metrics?.totalDeliveredQty || 0}</span>
                             </div>
                         </div>
                     </div>

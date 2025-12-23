@@ -1,15 +1,17 @@
 // components/Dashboard/SalesChart.js
+// Quantity-based chart showing Order, Shipped, Delivered quantities
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
 import apiClient from '../../lib/api-client';
 
 const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                <p className="text-sm font-semibold text-gray-900">{payload[0].payload.month}</p>
-                <p className="text-sm text-indigo-600">Value: ₹{(payload[0].value / 1000).toFixed(1)}K</p>
-                <p className="text-sm text-gray-600">Orders: {payload[0].payload.orders || 0}</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{payload[0].payload.month}</p>
+                <p className="text-sm text-blue-600">Order Qty: {payload[0]?.value || 0}</p>
+                <p className="text-sm text-green-600">Shipped Qty: {payload[1]?.value || 0}</p>
+                <p className="text-sm text-purple-600">Delivered Qty: {payload[2]?.value || 0}</p>
             </div>
         );
     }
@@ -24,14 +26,29 @@ export default function SalesChart({ period = '6months' }) {
         const fetchChartData = async () => {
             try {
                 setLoading(true);
-                const response = await apiClient.getChartData({ period, type: 'po' });
+                const response = await apiClient.getChartData({ period, type: 'quantity' });
                 if (response.success && response.data) {
                     setData(response.data);
+                } else {
+                    // Generate sample months if no data
+                    const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    setData(months.map(month => ({
+                        month,
+                        orderQty: 0,
+                        shippedQty: 0,
+                        deliveredQty: 0
+                    })));
                 }
             } catch (error) {
                 console.error('Failed to fetch chart data:', error);
-                // Fallback to empty data
-                setData([]);
+                // Fallback to empty months
+                const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                setData(months.map(month => ({
+                    month,
+                    orderQty: 0,
+                    shippedQty: 0,
+                    deliveredQty: 0
+                })));
             } finally {
                 setLoading(false);
             }
@@ -48,21 +65,21 @@ export default function SalesChart({ period = '6months' }) {
         );
     }
 
-    if (data.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-[300px] text-gray-500">
-                No data available
-            </div>
-        );
-    }
-
     return (
         <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={data}>
                 <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <linearGradient id="colorOrder" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorShipped" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
                     </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -74,15 +91,33 @@ export default function SalesChart({ period = '6months' }) {
                 <YAxis 
                     stroke="#9ca3af"
                     style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                    tickFormatter={(value) => value.toLocaleString()}
                 />
                 <Tooltip content={<CustomTooltip />} />
+                <Legend />
                 <Area 
                     type="monotone" 
-                    dataKey="value" 
-                    stroke="#6366f1" 
+                    dataKey="orderQty" 
+                    name="Order Qty"
+                    stroke="#3b82f6" 
                     strokeWidth={2}
-                    fill="url(#colorValue)" 
+                    fill="url(#colorOrder)" 
+                />
+                <Area 
+                    type="monotone" 
+                    dataKey="shippedQty" 
+                    name="Shipped Qty"
+                    stroke="#22c55e" 
+                    strokeWidth={2}
+                    fill="url(#colorShipped)" 
+                />
+                <Area 
+                    type="monotone" 
+                    dataKey="deliveredQty" 
+                    name="Delivered Qty"
+                    stroke="#a855f7" 
+                    strokeWidth={2}
+                    fill="url(#colorDelivered)" 
                 />
             </AreaChart>
         </ResponsiveContainer>

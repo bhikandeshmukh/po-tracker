@@ -78,39 +78,53 @@ async function updateAppointment(req, res, appointmentId, user) {
 
     await db.collection('appointments').doc(appointmentId).update(updateData);
 
-    // Sync with linked shipment
-    const shipmentDoc = await db.collection('shipments').doc(appointmentId).get();
+    // Sync with linked shipment - ALL fields
+    const appointmentData = appointmentDoc.data();
+    const shipmentId = appointmentData.shipmentId || appointmentId;
+    const shipmentDoc = await db.collection('shipments').doc(shipmentId).get();
+    
     if (shipmentDoc.exists) {
         const shipmentUpdate = {
             updatedAt: new Date(),
             updatedBy: user.uid
         };
 
-        // Sync status if changed
-        if (updateData.status) {
-            const shipmentStatusMap = {
-                'scheduled': 'pending',
-                'confirmed': 'in_transit',
-                'completed': 'delivered',
-                'cancelled': 'cancelled'
-            };
-            shipmentUpdate.status = shipmentStatusMap[updateData.status] || 'pending';
+        // Sync all relevant fields
+        if (updateData.status !== undefined) {
+            shipmentUpdate.status = updateData.status;
         }
-
-        // Sync LR docket number if changed
         if (updateData.lrDocketNumber !== undefined) {
             shipmentUpdate.lrDocketNumber = updateData.lrDocketNumber;
         }
-
-        // Sync scheduled date and time if changed
+        if (updateData.invoiceNumber !== undefined) {
+            shipmentUpdate.invoiceNumber = updateData.invoiceNumber;
+        }
         if (updateData.scheduledDate) {
             shipmentUpdate.expectedDeliveryDate = updateData.scheduledDate;
         }
-        if (updateData.scheduledTimeSlot) {
+        if (updateData.scheduledTimeSlot !== undefined) {
             shipmentUpdate.scheduledTimeSlot = updateData.scheduledTimeSlot;
         }
+        if (updateData.transporterId !== undefined) {
+            shipmentUpdate.transporterId = updateData.transporterId;
+        }
+        if (updateData.transporterName !== undefined) {
+            shipmentUpdate.transporterName = updateData.transporterName;
+        }
+        if (updateData.notes !== undefined) {
+            shipmentUpdate.notes = updateData.notes;
+        }
+        if (updateData.totalQuantity !== undefined) {
+            shipmentUpdate.totalQuantity = updateData.totalQuantity;
+        }
+        if (updateData.vendorId !== undefined) {
+            shipmentUpdate.vendorId = updateData.vendorId;
+        }
+        if (updateData.vendorName !== undefined) {
+            shipmentUpdate.vendorName = updateData.vendorName;
+        }
 
-        await db.collection('shipments').doc(appointmentId).update(shipmentUpdate);
+        await db.collection('shipments').doc(shipmentId).update(shipmentUpdate);
     }
 
     return res.status(200).json({

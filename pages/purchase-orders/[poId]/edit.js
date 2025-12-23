@@ -37,15 +37,10 @@ function EditPurchaseOrder() {
                 if (isMounted && poResponse.success && itemsResponse.success) {
                     const po = poResponse.data;
                     const items = itemsResponse.data.map(item => ({
-                        sku: item.sku || item.itemId,
-                        itemName: item.itemName || item.sku,
-                        mrp: item.mrp || item.unitPrice,
                         poQty: item.poQuantity,
                         qtySent: item.shippedQuantity || 0,
                         qtyPending: item.pendingQuantity || item.poQuantity,
-                        price: item.unitPrice,
-                        gstRate: item.gstRate || 18,
-                        totalPrice: item.poQuantity * item.unitPrice
+                        deliveredQty: item.deliveredQuantity || 0
                     }));
                     
                     setFormData({
@@ -88,14 +83,10 @@ function EditPurchaseOrder() {
                 expectedDeliveryDate: formData.expectedDelivery,
                 notes: formData.notes || '',
                 items: formData.items.map(item => ({
-                    sku: item.sku,
-                    itemName: item.sku,
                     poQuantity: parseInt(item.poQty, 10) || 0,
-                    unitPrice: parseFloat(item.price) || 0,
-                    gstRate: 18,
-                    mrp: parseFloat(item.mrp) || 0,
                     shippedQuantity: parseInt(item.qtySent, 10) || 0,
-                    pendingQuantity: parseInt(item.qtyPending, 10) || 0
+                    pendingQuantity: parseInt(item.qtyPending, 10) || 0,
+                    deliveredQuantity: parseInt(item.deliveredQty, 10) || 0
                 }))
             };
 

@@ -20,11 +20,12 @@ export default function AppointmentForm({ formData, onChange, onSubmit, loading,
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Shipment ID</label>
-                        <input type="text" name="shipmentId" value={formData.shipmentId || formData.appointmentNumber || ''} 
-                            readOnly
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed" />
-                        <p className="text-xs text-gray-500 mt-1">Shipment ID is auto-generated and cannot be changed</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Appointment ID *</label>
+                        <input type="text" name="newAppointmentId" value={formData.newAppointmentId || formData.appointmentNumber || ''} 
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" 
+                            placeholder="Enter appointment ID" />
+                        <p className="text-xs text-gray-500 mt-1">You can change the appointment ID</p>
                     </div>
 
                     <div>
@@ -32,6 +33,13 @@ export default function AppointmentForm({ formData, onChange, onSubmit, loading,
                         <input type="text" name="lrDocketNumber" value={formData.lrDocketNumber || ''} onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" 
                             placeholder="Enter LR docket number" />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Invoice No</label>
+                        <input type="text" name="invoiceNumber" value={formData.invoiceNumber || ''} onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" 
+                            placeholder="Enter invoice number" />
                     </div>
 
                     <div>
@@ -74,9 +82,10 @@ export default function AppointmentForm({ formData, onChange, onSubmit, loading,
                         <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                         <select name="status" value={formData.status} onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="scheduled">Scheduled</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
+                            <option value="created">Created</option>
+                            <option value="pending">Pending</option>
+                            <option value="in_transit">In Transit</option>
+                            <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
                     </div>

@@ -110,22 +110,16 @@ async function createReturn(req, res, user) {
 
     const poData = poDoc.data();
 
-    // Calculate totals
+    // Calculate totals - Quantity only
     let totalQuantity = 0;
-    let totalAmount = 0;
 
-    const processedItems = items.map(item => {
-        const itemTotal = item.returnQuantity * item.unitPrice;
-        const gstAmount = (itemTotal * item.gstRate) / 100;
-
-        totalQuantity += item.returnQuantity;
-        totalAmount += itemTotal + gstAmount;
+    const processedItems = items.map((item, index) => {
+        totalQuantity += item.returnQuantity || 0;
 
         return {
             ...item,
-            itemId: item.sku,
-            gstAmount,
-            totalAmount: itemTotal + gstAmount,
+            itemId: `item_${index + 1}`,
+            returnQuantity: item.returnQuantity || 0,
             createdAt: new Date(),
             updatedAt: new Date()
         };
@@ -149,7 +143,6 @@ async function createReturn(req, res, user) {
         returnDate: new Date(returnDate),
         totalItems: processedItems.length,
         totalQuantity,
-        totalAmount,
         isRefundProcessed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -164,7 +157,7 @@ async function createReturn(req, res, user) {
         const itemRef = db.collection('returnOrders')
             .doc(returnNumber)
             .collection('items')
-            .doc(item.sku);
+            .doc(item.itemId);
         batch.set(itemRef, item);
     });
     await batch.commit();

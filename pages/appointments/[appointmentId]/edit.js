@@ -33,6 +33,7 @@ function EditAppointment() {
                     // Map scheduledDate to appointmentDate for the form
                     setFormData({
                         ...data,
+                        newAppointmentId: data.appointmentNumber || appointmentId,
                         appointmentDate: data.scheduledDate ? new Date(data.scheduledDate).toISOString().split('T')[0] : '',
                         timeSlot: data.scheduledTimeSlot || '',
                         location: data.deliveryLocation?.address || ''
@@ -65,10 +66,17 @@ function EditAppointment() {
                 scheduledTimeSlot: formData.timeSlot,
                 deliveryLocation: { address: formData.location }
             };
+            
+            // Include new appointment ID if changed
+            if (formData.newAppointmentId && formData.newAppointmentId !== formData.appointmentNumber) {
+                updateData.appointmentNumber = formData.newAppointmentId;
+            }
+            
             // Remove form-specific fields
             delete updateData.appointmentDate;
             delete updateData.timeSlot;
             delete updateData.location;
+            delete updateData.newAppointmentId;
 
             const response = await apiClient.updateAppointment(appointmentId, updateData);
             if (response.success) {

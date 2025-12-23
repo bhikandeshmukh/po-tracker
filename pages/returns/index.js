@@ -132,7 +132,7 @@ export default function Returns() {
                                                     {returnOrder.status.toUpperCase()}
                                                 </span>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                                                 <div className="flex items-center space-x-2">
                                                     <Package className="w-4 h-4" />
                                                     <span>PO: {returnOrder.poNumber}</span>
@@ -140,9 +140,6 @@ export default function Returns() {
                                                 <div className="flex items-center space-x-2">
                                                     <AlertCircle className="w-4 h-4" />
                                                     <span className="capitalize">{returnOrder.returnType.replace('_', ' ')}</span>
-                                                </div>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    ₹{returnOrder.totalAmount?.toLocaleString()}
                                                 </div>
                                             </div>
                                         </div>

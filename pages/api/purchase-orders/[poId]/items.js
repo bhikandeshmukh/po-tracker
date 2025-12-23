@@ -85,26 +85,13 @@ async function getPOItems(req, res, poId) {
 async function addPOItem(req, res, poId, user) {
     const item = sanitizeInput(req.body);
 
-    // Comprehensive validation
+    // Comprehensive validation - Quantity only
     const errors = {};
-    
-    if (!item.sku) errors.sku = 'SKU is required';
-    else if (item.sku.length > 100) errors.sku = 'SKU cannot exceed 100 characters';
-    
-    if (!item.itemName) errors.itemName = 'Item name is required';
-    else if (item.itemName.length > 200) errors.itemName = 'Item name cannot exceed 200 characters';
     
     if (!item.poQuantity) errors.poQuantity = 'PO quantity is required';
     else if (item.poQuantity <= 0) errors.poQuantity = 'Quantity must be greater than 0';
     else if (!Number.isInteger(item.poQuantity)) errors.poQuantity = 'Quantity must be a whole number';
     else if (item.poQuantity > 1000000) errors.poQuantity = 'Quantity cannot exceed 1,000,000';
-    
-    if (item.unitPrice === undefined) errors.unitPrice = 'Unit price is required';
-    else if (item.unitPrice < 0) errors.unitPrice = 'Unit price cannot be negative';
-    else if (item.unitPrice > 10000000) errors.unitPrice = 'Unit price cannot exceed 10,000,000';
-    
-    if (item.gstRate === undefined) errors.gstRate = 'GST rate is required';
-    else if (item.gstRate < 0 || item.gstRate > 100) errors.gstRate = 'GST rate must be between 0 and 100';
     
     if (Object.keys(errors).length > 0) {
         return res.status(400).json({
@@ -118,42 +105,12 @@ async function addPOItem(req, res, poId, user) {
     }
 
     try {
-        // Validate SKU
-        if (!item.sku || typeof item.sku !== 'string' || item.sku.trim().length === 0) {
-            return res.status(400).json({
-                success: false,
-                error: { 
-                    code: 'VALIDATION_ERROR', 
-                    message: 'SKU is required and must be a non-empty string',
-                    details: { receivedSku: item.sku }
-                }
-            });
-        }
-
         // Check if PO exists
         const poDoc = await db.collection('purchaseOrders').doc(poId).get();
         if (!poDoc.exists) {
             return res.status(404).json({
                 success: false,
                 error: { code: 'NOT_FOUND', message: 'Purchase order not found' }
-            });
-        }
-
-        // Check if item already exists
-        const existingItem = await db.collection('purchaseOrders')
-            .doc(poId)
-            .collection('items')
-            .doc(item.sku)
-            .get();
-
-        if (existingItem.exists) {
-            return res.status(409).json({
-                success: false,
-                error: { 
-                    code: 'DUPLICATE_ERROR', 
-                    message: 'Item with this SKU already exists in PO',
-                    details: { sku: item.sku }
-                }
             });
         }
 
@@ -164,28 +121,17 @@ async function addPOItem(req, res, poId, user) {
             .get();
 
         const lineNumber = itemsSnapshot.size + 1;
-
-        // Calculate item totals
-        const gstRate = item.gstRate || 0;
-        const lineTotal = item.poQuantity * item.unitPrice;
-        const gstAmount = (lineTotal * gstRate) / 100;
-        const itemTotal = lineTotal + gstAmount;
+        const itemId = `item_${lineNumber}`;
 
         const itemData = {
-            sku: item.sku,
-            itemName: item.itemName,
+            itemId,
             poQuantity: item.poQuantity,
-            unitPrice: item.unitPrice,
-            gstRate: gstRate,
-            mrp: item.mrp || 0,
             lineNumber,
-            itemId: item.sku,
             shippedQuantity: 0,
             pendingQuantity: item.poQuantity,
             receivedQuantity: 0,
+            deliveredQuantity: 0,
             returnedQuantity: 0,
-            gstAmount,
-            totalAmount: itemTotal,
             createdAt: new Date(),
             updatedAt: new Date()
         };
@@ -194,7 +140,7 @@ async function addPOItem(req, res, poId, user) {
         await db.collection('purchaseOrders')
             .doc(poId)
             .collection('items')
-            .doc(item.sku)
+            .doc(itemId)
             .set(itemData);
 
         // FIXED: Recalculate totals from all items (single source of truth)
@@ -209,10 +155,8 @@ async function addPOItem(req, res, poId, user) {
             performedByName: user.name || user.email,
             performedByRole: user.role || 'user',
             metadata: {
-                sku: item.sku,
-                itemName: item.itemName,
-                quantity: item.poQuantity,
-                amount: itemTotal
+                itemId,
+                quantity: item.poQuantity
             }
         });
 

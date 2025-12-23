@@ -251,31 +251,23 @@ async function createShipment(req, res, user) {
     let totalQuantity = 0;
     let totalAmount = 0;
 
-    const processedItems = items.map(item => {
-        const itemTotal = item.shippedQuantity * item.unitPrice;
-        const gstAmount = (itemTotal * item.gstRate) / 100;
-
-        totalQuantity += item.shippedQuantity;
-        totalAmount += itemTotal + gstAmount;
-
-        // Create safe document ID from SKU (for Firestore compatibility)
-        const safeItemId = item.sku.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const processedItems = items.map((item, index) => {
+        const shippedQty = item.shippedQuantity || 0;
+        totalQuantity += shippedQty;
 
         return {
-            ...item,
-            itemId: safeItemId, // Safe ID for Firestore document
-            sku: item.sku, // Original SKU preserved
+            itemId: `item_${index + 1}`,
+            shippedQuantity: shippedQty,
+            deliveredQuantity: item.deliveredQuantity || 0,
             receivedQuantity: 0,
             damagedQuantity: 0,
-            gstAmount,
-            totalAmount: itemTotal + gstAmount,
             createdAt: new Date(),
             updatedAt: new Date()
         };
     });
 
-    // Calculate GST
-    const totalGST = processedItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    // Calculate GST (no longer needed - quantity only)
+    const totalGST = 0;
     
     // Create shipment
     const shipmentData = {
@@ -289,14 +281,12 @@ async function createShipment(req, res, user) {
         transporterId,
         transporterName: transporterData.transporterName || '',
         invoiceNumber: invoiceNumber || '',
+        lrDocketNumber: req.body.lrDocketNumber || '',
         status: 'created',
         shipmentDate: new Date(shipmentDate),
         expectedDeliveryDate: new Date(calculatedDeliveryDate),
         totalItems: processedItems.length,
         totalQuantity,
-        totalAmount,
-        totalGST,
-        invoiceValue: totalAmount,
         shippingAddress: shippingAddress || {},
         notes: notes || '',
         appointmentId: appointmentNumber,
@@ -308,57 +298,56 @@ async function createShipment(req, res, user) {
 
     await db.collection('shipments').doc(shipmentId).set(shipmentData);
 
-    // Save shipment items and update PO items
+    // Save shipment items
     const batch = db.batch();
     
     for (const item of processedItems) {
-        // Validate SKU is not empty
-        if (!item.sku || typeof item.sku !== 'string' || item.sku.trim().length === 0) {
-            console.error('Invalid SKU found in item:', item);
-            continue; // Skip this item
-        }
-        
-        // Use the safe itemId that was created in processedItems
-        const safeDocId = item.itemId;
-        
-        if (!safeDocId || safeDocId.length === 0) {
-            console.error('Invalid itemId for SKU:', item.sku);
-            continue;
-        }
-        
-        // Save shipment item (itemId and sku are already in item object)
         const shipmentItemRef = db.collection('shipments')
             .doc(shipmentId)
             .collection('items')
-            .doc(safeDocId);
+            .doc(item.itemId);
         batch.set(shipmentItemRef, item);
-        
-        // Get current PO item to calculate new values
-        const poItemRef = db.collection('purchaseOrders')
-            .doc(poId)
-            .collection('items')
-            .doc(safeDocId);
-        
-        console.log(`Looking for PO item with docId: ${safeDocId} (from SKU: ${item.sku})`);
-        const poItemDoc = await poItemRef.get();
-        if (poItemDoc.exists) {
-            const poItemData = poItemDoc.data();
-            const currentShipped = poItemData.shippedQuantity || 0;
-            const newShipped = currentShipped + (item.shippedQuantity || 0);
-            const newPending = (poItemData.poQuantity || 0) - newShipped;
-            
-            console.log(`Updating PO item ${safeDocId}: shipped ${currentShipped} -> ${newShipped}`);
-            batch.update(poItemRef, {
-                shippedQuantity: newShipped,
-                pendingQuantity: Math.max(0, newPending),
-                updatedAt: new Date()
-            });
-        } else {
-            console.warn(`PO item not found with docId: ${safeDocId} (SKU: ${item.sku})`);
-        }
     }
     
     await batch.commit();
+
+    // Update PO items with shipped quantity
+    const poItemsSnapshot = await db.collection('purchaseOrders')
+        .doc(poId)
+        .collection('items')
+        .get();
+    
+    if (!poItemsSnapshot.empty) {
+        const poItemsBatch = db.batch();
+        let remainingQtyToShip = totalQuantity;
+        
+        // Distribute shipped quantity across PO items
+        for (const poItemDoc of poItemsSnapshot.docs) {
+            if (remainingQtyToShip <= 0) break;
+            
+            const poItemData = poItemDoc.data();
+            const currentShipped = poItemData.shippedQuantity || 0;
+            const poQty = poItemData.poQuantity || 0;
+            const availableToShip = poQty - currentShipped;
+            
+            if (availableToShip > 0) {
+                const qtyToShip = Math.min(availableToShip, remainingQtyToShip);
+                const newShipped = currentShipped + qtyToShip;
+                const newPending = poQty - newShipped;
+                
+                poItemsBatch.update(poItemDoc.ref, {
+                    shippedQuantity: newShipped,
+                    pendingQuantity: Math.max(0, newPending),
+                    updatedAt: new Date()
+                });
+                
+                remainingQtyToShip -= qtyToShip;
+            }
+        }
+        
+        await poItemsBatch.commit();
+        console.log('PO items updated with shipped quantity');
+    }
 
     // Update PO document totals
     console.log('Updating PO totals for:', poId);
@@ -423,12 +412,15 @@ async function createShipment(req, res, user) {
             vendorName: poData.vendorName || '',
             transporterId,
             transporterName: transporterData.transporterName || '',
+            invoiceNumber: invoiceNumber || '',
+            lrDocketNumber: req.body.lrDocketNumber || '',
             totalQuantity,
             totalItems: processedItems.length,
-            status: 'scheduled',
+            status: 'created',
             scheduledDate: new Date(calculatedDeliveryDate),
             scheduledTimeSlot: '09:00-12:00',
             deliveryLocation: shippingAddress || {},
+            notes: notes || '',
             createdAt: new Date(),
             updatedAt: new Date(),
             createdBy: user.uid
@@ -471,7 +463,6 @@ async function createShipment(req, res, user) {
         metadata: {
             poNumber: poData.poNumber,
             totalQuantity,
-            totalAmount,
             transporterName: transporterData.transporterName || '',
             invoiceNumber: invoiceNumber || ''
         }

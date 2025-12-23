@@ -317,11 +317,51 @@ async function updateShipment(req, res, shipmentId, user) {
         });
     } else {
         // Normal update without ID change
-        const updateData = { ...otherUpdates, updatedAt: new Date() };
+        const updateData = { ...otherUpdates, updatedAt: new Date(), updatedBy: user.uid };
         delete updateData.shipmentId;
         delete updateData.createdAt;
 
         await db.collection('shipments').doc(shipmentId).update(updateData);
+
+        // Sync all fields to linked appointment
+        const shipmentData = shipmentDoc.data();
+        const appointmentId = shipmentData.appointmentId || shipmentId;
+        const appointmentDoc = await db.collection('appointments').doc(appointmentId).get();
+        
+        if (appointmentDoc.exists) {
+            const appointmentUpdate = {
+                updatedAt: new Date(),
+                updatedBy: user.uid
+            };
+
+            // Sync all relevant fields
+            if (updateData.lrDocketNumber !== undefined) {
+                appointmentUpdate.lrDocketNumber = updateData.lrDocketNumber;
+            }
+            if (updateData.invoiceNumber !== undefined) {
+                appointmentUpdate.invoiceNumber = updateData.invoiceNumber;
+            }
+            if (updateData.status !== undefined) {
+                appointmentUpdate.status = updateData.status;
+            }
+            if (updateData.expectedDeliveryDate !== undefined) {
+                appointmentUpdate.scheduledDate = new Date(updateData.expectedDeliveryDate);
+            }
+            if (updateData.transporterId !== undefined) {
+                appointmentUpdate.transporterId = updateData.transporterId;
+            }
+            if (updateData.transporterName !== undefined) {
+                appointmentUpdate.transporterName = updateData.transporterName;
+            }
+            if (updateData.notes !== undefined) {
+                appointmentUpdate.notes = updateData.notes;
+            }
+            if (updateData.totalQuantity !== undefined) {
+                appointmentUpdate.totalQuantity = updateData.totalQuantity;
+            }
+
+            await db.collection('appointments').doc(appointmentId).update(appointmentUpdate);
+        }
 
         return res.status(200).json({
             success: true,

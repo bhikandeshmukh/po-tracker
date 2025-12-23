@@ -144,18 +144,11 @@ export default function PurchaseOrders() {
                 }
                 
                 // Add item to PO
-                const gstRate = parseFloat(row.gstRate);
-                console.log(`Row ${index} GST Rate from Excel:`, row.gstRate, 'Parsed:', gstRate);
-                
                 poGroups[row.poNumber].items.push({
-                    sku: row.sku,
-                    itemName: row.sku,
                     poQuantity: parseInt(row.poQty) || 0,
-                    unitPrice: parseFloat(row.price) || 0,
-                    gstRate: isNaN(gstRate) ? 18 : gstRate,
-                    mrp: parseFloat(row.mrp) || 0,
                     shippedQuantity: parseInt(row.qtySent) || 0,
-                    pendingQuantity: parseInt(row.qtyPending) || 0
+                    pendingQuantity: parseInt(row.qtyPending) || 0,
+                    deliveredQuantity: parseInt(row.deliveredQty) || 0
                 });
             });
             
@@ -371,9 +364,7 @@ export default function PurchaseOrders() {
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Pending Qty
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Amount
-                                            </th>
+
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Status
                                             </th>
@@ -421,11 +412,7 @@ export default function PurchaseOrders() {
                                                             {order.pendingQuantity || 0}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="text-sm font-medium text-gray-900">
-                                                            ₹{order.grandTotal?.toLocaleString()}
-                                                        </span>
-                                                    </td>
+
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
                                                             <StatusIcon className="w-3 h-3" />

@@ -5,7 +5,7 @@ import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import { DetailSkeleton } from '../../components/Common/LoadingSkeleton';
 import { exportPOToPDF } from '../../lib/pdf-export';
-import { ArrowLeft, Edit, CheckCircle, XCircle, Package, Calendar, Building2, Truck, Activity, FileDown, Upload } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, XCircle, Package, Calendar, Building2, Truck, Activity, FileDown, Upload, MessageSquare, Send, User } from 'lucide-react';
 import ShipmentExcelImport from '../../components/Shipments/ShipmentExcelImport';
 import { formatDate } from '../../lib/date-utils';
 
@@ -20,6 +20,20 @@ export default function PODetail() {
     const [showAllItems, setShowAllItems] = useState(false);
     const [showCreateShipment, setShowCreateShipment] = useState(false);
     const [showImportShipment, setShowImportShipment] = useState(false);
+    const [transporters, setTransporters] = useState([]);
+    const [newShipment, setNewShipment] = useState({
+        shipmentNumber: '',
+        transporterId: '',
+        shipmentDate: new Date().toISOString().split('T')[0],
+        shippedQty: '',
+        docketNumber: '',
+        invoiceNumber: '',
+        notes: ''
+    });
+    const [createShipmentLoading, setCreateShipmentLoading] = useState(false);
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [commentLoading, setCommentLoading] = useState(false);
 
     const fetchPODetails = async () => {
         try {
@@ -63,6 +77,24 @@ export default function PODetail() {
                 if (poData.items) {
                     setItems(poData.items);
                 }
+                
+                // Auto-sync: Update PO items shipped quantity from shipments
+                if (poData.shippedQuantity > 0 && poData.items) {
+                    const needsSync = poData.items.some(item => (item.shippedQuantity || 0) === 0);
+                    if (needsSync) {
+                        console.log('Auto-syncing PO items shipped quantity...');
+                        try {
+                            await apiClient.post('/admin/sync-po-items', { poId });
+                            // Refetch to get updated items
+                            const refreshResponse = await apiClient.getPOById(poId);
+                            if (refreshResponse.success && refreshResponse.data.items) {
+                                setItems(refreshResponse.data.items);
+                            }
+                        } catch (err) {
+                            console.error('Failed to auto-sync PO items:', err);
+                        }
+                    }
+                }
             }
             
             // Fetch shipments for this PO
@@ -80,23 +112,42 @@ export default function PODetail() {
             if (response.success) {
                 const shipmentsData = response.data || [];
                 
+                // Auto-sync: Create missing appointments for shipments
+                for (const shipment of shipmentsData) {
+                    try {
+                        const appointmentResponse = await apiClient.getAppointmentById(shipment.shipmentId);
+                        if (!appointmentResponse.success) {
+                            // Appointment doesn't exist, create it
+                            console.log('Creating missing appointment for shipment:', shipment.shipmentId);
+                            await apiClient.post('/admin/sync-appointments', { shipmentId: shipment.shipmentId });
+                        }
+                    } catch (err) {
+                        // Appointment doesn't exist, create it
+                        console.log('Creating missing appointment for shipment:', shipment.shipmentId);
+                        try {
+                            await apiClient.post('/admin/sync-appointments', { shipmentId: shipment.shipmentId });
+                        } catch (syncErr) {
+                            console.error('Failed to sync appointment:', syncErr);
+                        }
+                    }
+                }
+                
                 // Fetch appointment data for each shipment to get LR docket number
                 const shipmentsWithAppointments = await Promise.all(
                     shipmentsData.map(async (shipment) => {
-                        if (shipment.appointmentId) {
-                            try {
-                                const appointmentResponse = await apiClient.getAppointmentById(shipment.appointmentId);
-                                if (appointmentResponse.success) {
-                                    // Merge appointment data (LR docket number, etc.)
-                                    return {
-                                        ...shipment,
-                                        lrDocketNumber: appointmentResponse.data.lrDocketNumber,
-                                        scheduledTimeSlot: appointmentResponse.data.scheduledTimeSlot
-                                    };
-                                }
-                            } catch (err) {
-                                console.error(`Failed to fetch appointment ${shipment.appointmentId}:`, err);
+                        try {
+                            const appointmentResponse = await apiClient.getAppointmentById(shipment.shipmentId);
+                            if (appointmentResponse.success) {
+                                // Merge appointment data (LR docket number, etc.)
+                                return {
+                                    ...shipment,
+                                    lrDocketNumber: shipment.lrDocketNumber || appointmentResponse.data.lrDocketNumber,
+                                    invoiceNumber: shipment.invoiceNumber || appointmentResponse.data.invoiceNumber,
+                                    scheduledTimeSlot: appointmentResponse.data.scheduledTimeSlot
+                                };
                             }
+                        } catch (err) {
+                            console.error(`Failed to fetch appointment ${shipment.shipmentId}:`, err);
                         }
                         return shipment;
                     })
@@ -106,6 +157,41 @@ export default function PODetail() {
             }
         } catch (error) {
             console.error('Failed to fetch shipments:', error);
+        }
+    };
+
+    const fetchComments = async () => {
+        try {
+            const response = await apiClient.get(`/purchase-orders/${poId}/comments`);
+            if (response.success) {
+                setComments(response.data || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch comments:', error);
+        }
+    };
+
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+
+        setCommentLoading(true);
+        try {
+            const response = await apiClient.post(`/purchase-orders/${poId}/comments`, {
+                text: newComment.trim(),
+                createdAt: new Date().toISOString(),
+                createdBy: 'User' // Can be replaced with actual user name
+            });
+
+            if (response.success) {
+                setNewComment('');
+                await fetchComments();
+            }
+        } catch (error) {
+            console.error('Failed to add comment:', error);
+            alert('Failed to add comment');
+        } finally {
+            setCommentLoading(false);
         }
     };
     
@@ -126,8 +212,6 @@ export default function PODetail() {
             const cleanedData = data.map((row, index) => {
                 return {
                     ...row,
-                    // Keep SKU exactly as provided in Excel - no parsing or changes
-                    sku: row.sku || '',
                     // Parse sentQty as number
                     sentQty: parseInt(row.sentQty) || 0,
                     rowIndex: index + 1
@@ -140,7 +224,6 @@ export default function PODetail() {
                 if (!row.shipmentNumber) validationErrors.push(`Row ${row.rowIndex}: Missing shipmentNumber`);
                 if (!row.poNumber) validationErrors.push(`Row ${row.rowIndex}: Missing poNumber`);
                 if (!row.transporterId) validationErrors.push(`Row ${row.rowIndex}: Missing transporterId`);
-                if (!row.sku) validationErrors.push(`Row ${row.rowIndex}: Missing SKU`);
                 if (!row.sentQty || row.sentQty <= 0) validationErrors.push(`Row ${row.rowIndex}: Invalid sentQty (${row.sentQty})`);
             });
 
@@ -154,12 +237,6 @@ export default function PODetail() {
             const shipmentGroups = {};
             
             cleanedData.forEach(row => {
-                // Skip rows with empty SKU
-                if (!row.sku) {
-                    console.warn('Skipping row with empty SKU:', row);
-                    return;
-                }
-
                 if (!shipmentGroups[row.shipmentNumber]) {
                     shipmentGroups[row.shipmentNumber] = {
                         shipmentNumber: row.shipmentNumber,
@@ -174,7 +251,6 @@ export default function PODetail() {
                 }
                 
                 shipmentGroups[row.shipmentNumber].items.push({
-                    sku: row.sku,
                     sentQty: row.sentQty
                 });
             });
@@ -232,14 +308,7 @@ export default function PODetail() {
                     const expectedDeliveryDate = poData.expectedDeliveryDate || shipment.shipmentDate;
                     
                     // Prepare shipment data for API with proper item details
-                    // Filter out items with empty SKU
-                    const validItems = shipment.items.filter(item => {
-                        if (!item.sku) {
-                            console.warn('Skipping item with empty SKU in shipment:', shipment.shipmentNumber);
-                            return false;
-                        }
-                        return true;
-                    });
+                    const validItems = shipment.items.filter(item => item.sentQty > 0);
 
                     if (validItems.length === 0) {
                         throw new Error(`Shipment ${shipment.shipmentNumber} has no valid items`);
@@ -255,15 +324,9 @@ export default function PODetail() {
                         shippingAddress: {},
                         notes: shipment.notes,
                         items: validItems.map(item => {
-                            // Use SKU exactly as provided - no modifications
-                            const poItem = poItemsMap[item.sku] || {};
                             return {
-                                sku: item.sku, // Keep SKU as-is from Excel
-                                itemName: poItem.itemName || item.sku,
                                 shippedQuantity: item.sentQty,
-                                unitPrice: poItem.unitPrice || 0,
-                                gstRate: poItem.gstRate || 18,
-                                poQuantity: poItem.poQuantity || item.sentQty
+                                deliveredQuantity: 0
                             };
                         })
                     };
@@ -290,8 +353,86 @@ export default function PODetail() {
     };
 
     useEffect(() => {
-        if (poId) fetchPODetails();
+        if (poId) {
+            fetchPODetails();
+            fetchComments();
+        }
     }, [poId]);
+
+    // Fetch transporters for dropdown
+    useEffect(() => {
+        const fetchTransporters = async () => {
+            try {
+                const response = await apiClient.getTransporters();
+                if (response.success) {
+                    setTransporters(response.data || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch transporters:', error);
+            }
+        };
+        fetchTransporters();
+    }, []);
+
+    const handleCreateShipment = async (e) => {
+        e.preventDefault();
+        
+        if (!newShipment.shipmentNumber || !newShipment.transporterId || !newShipment.shippedQty) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        const shippedQty = parseInt(newShipment.shippedQty);
+        if (shippedQty <= 0) {
+            alert('Shipped Qty must be greater than 0');
+            return;
+        }
+
+        setCreateShipmentLoading(true);
+        try {
+            const shipmentData = {
+                appointmentNumber: newShipment.shipmentNumber,
+                shipmentNumber: newShipment.shipmentNumber,
+                poId: poId,
+                transporterId: newShipment.transporterId,
+                shipmentDate: new Date(newShipment.shipmentDate).toISOString(),
+                expectedDeliveryDate: po.expectedDeliveryDate,
+                lrDocketNumber: newShipment.docketNumber,
+                invoiceNumber: newShipment.invoiceNumber,
+                notes: newShipment.notes,
+                items: [{
+                    shippedQuantity: shippedQty,
+                    deliveredQuantity: 0
+                }]
+            };
+
+            const response = await apiClient.createShipment(shipmentData);
+            
+            if (response.success) {
+                // Reset form
+                setNewShipment({
+                    shipmentNumber: '',
+                    transporterId: '',
+                    shipmentDate: new Date().toISOString().split('T')[0],
+                    shippedQty: '',
+                    docketNumber: '',
+                    invoiceNumber: '',
+                    notes: ''
+                });
+                setShowCreateShipment(false);
+                // Refresh data
+                await fetchPODetails();
+                await fetchShipments();
+            } else {
+                alert('Failed to create shipment');
+            }
+        } catch (error) {
+            console.error('Failed to create shipment:', error);
+            alert(error.message || 'Failed to create shipment');
+        } finally {
+            setCreateShipmentLoading(false);
+        }
+    };
 
     const handleApprove = async () => {
         if (!confirm('Are you sure you want to approve this PO?')) return;
@@ -484,27 +625,17 @@ export default function PODetail() {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">PO Qty</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shipped</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pending</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Order Qty</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shipped Qty</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pending Qty</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {(showAllItems ? items : items.slice(0, 5)).map((item, idx) => (
                                     <tr key={idx}>
-                                        <td className="px-4 py-3 text-sm text-gray-900">{item.sku || item.itemId}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-900">{item.itemName}</td>
                                         <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.poQuantity}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.shippedQuantity || 0}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.pendingQuantity || item.poQuantity}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-900 text-right">₹{item.unitPrice}</td>
-                                        <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                                            ₹{(item.poQuantity * item.unitPrice).toFixed(2)}
-                                        </td>
+                                        <td className="px-4 py-3 text-sm text-green-600 text-right">{item.shippedQuantity || 0}</td>
+                                        <td className="px-4 py-3 text-sm text-orange-600 text-right">{item.pendingQuantity || item.poQuantity}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -522,24 +653,6 @@ export default function PODetail() {
                             </button>
                         </div>
                     )}
-
-                    {/* Totals */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <div className="flex justify-end space-x-12">
-                            <div className="text-right">
-                                <p className="text-sm text-gray-500">Subtotal</p>
-                                <p className="text-lg font-semibold text-gray-900">₹{po.totalAmount?.toFixed(2) || '0.00'}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm text-gray-500">GST</p>
-                                <p className="text-lg font-semibold text-gray-900">₹{po.totalGST?.toFixed(2) || '0.00'}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm text-gray-500">Grand Total</p>
-                                <p className="text-2xl font-bold text-indigo-600">₹{po.grandTotal?.toFixed(2) || '0.00'}</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Shipments Section */}
@@ -547,6 +660,25 @@ export default function PODetail() {
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-gray-900">Shipments ({shipments.length})</h3>
                         <div className="flex items-center space-x-3">
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await apiClient.post('/admin/sync-appointments', {});
+                                        if (response.success) {
+                                            alert(`Synced! Created: ${response.createdCount}, Updated: ${response.updatedCount}`);
+                                            await fetchShipments();
+                                        }
+                                    } catch (err) {
+                                        console.error('Sync failed:', err);
+                                        alert('Sync failed: ' + err.message);
+                                    }
+                                }}
+                                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
+                                title="Sync missing appointments"
+                            >
+                                <Calendar className="w-4 h-4" />
+                                <span>Sync Appointments</span>
+                            </button>
                             <button
                                 onClick={() => setShowImportShipment(true)}
                                 className="flex items-center space-x-2 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50"
@@ -566,8 +698,118 @@ export default function PODetail() {
                     
                     {showCreateShipment && (
                         <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <h4 className="font-medium text-gray-900 mb-3">Create New Shipment</h4>
-                            <p className="text-sm text-gray-600">Shipment creation form will be added here</p>
+                            <h4 className="font-medium text-gray-900 mb-4">Create New Shipment</h4>
+                            <form onSubmit={handleCreateShipment} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Shipment ID <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newShipment.shipmentNumber}
+                                            onChange={(e) => setNewShipment({...newShipment, shipmentNumber: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Enter Shipment ID"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Transporter <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={newShipment.transporterId}
+                                            onChange={(e) => setNewShipment({...newShipment, transporterId: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            required
+                                        >
+                                            <option value="">Select Transporter</option>
+                                            {transporters.map((t) => (
+                                                <option key={t.transporterId || t.id} value={t.transporterId || t.id}>
+                                                    {t.name || t.transporterName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Shipment Date <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={newShipment.shipmentDate}
+                                            onChange={(e) => setNewShipment({...newShipment, shipmentDate: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Shipped Qty <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={newShipment.shippedQty}
+                                            onChange={(e) => setNewShipment({...newShipment, shippedQty: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Enter quantity"
+                                            min="1"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Docket No (LR)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newShipment.docketNumber}
+                                            onChange={(e) => setNewShipment({...newShipment, docketNumber: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Enter LR/Docket number"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Invoice No
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newShipment.invoiceNumber}
+                                            onChange={(e) => setNewShipment({...newShipment, invoiceNumber: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Enter invoice number"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                    <textarea
+                                        value={newShipment.notes}
+                                        onChange={(e) => setNewShipment({...newShipment, notes: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        rows="2"
+                                        placeholder="Optional notes"
+                                    />
+                                </div>
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateShipment(false)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={createShipmentLoading}
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                        {createShipmentLoading ? 'Creating...' : 'Create Shipment'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     )}
                     
@@ -659,6 +901,80 @@ export default function PODetail() {
                         <p className="text-gray-700">{po.notes}</p>
                     </div>
                 )}
+
+                {/* Comments/Logs Section */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                        <MessageSquare className="w-5 h-5 text-indigo-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Comments & Logs ({comments.length})</h3>
+                    </div>
+                    
+                    {/* Add Comment Form */}
+                    <form onSubmit={handleAddComment} className="mb-6">
+                        <div className="flex space-x-3">
+                            <div className="flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                    <User className="w-5 h-5 text-indigo-600" />
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <textarea
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="Add a comment or log... (e.g., 'Called vendor for update', 'Shipment delayed due to weather')"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                                    rows="2"
+                                />
+                                <div className="flex justify-end mt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={commentLoading || !newComment.trim()}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        <span>{commentLoading ? 'Adding...' : 'Add Comment'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    {/* Comments List */}
+                    {comments.length === 0 ? (
+                        <div className="text-center py-8 border-t border-gray-200">
+                            <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500">No comments yet</p>
+                            <p className="text-sm text-gray-400 mt-1">Add comments to track work done on this PO</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 border-t border-gray-200 pt-4">
+                            {comments.map((comment, idx) => (
+                                <div key={comment.id || idx} className="flex space-x-3">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                            <User className="w-5 h-5 text-gray-500" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 bg-gray-50 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-medium text-gray-900">{comment.createdBy || 'User'}</span>
+                                            <span className="text-sm text-gray-500">
+                                                {comment.createdAt ? new Date(comment.createdAt).toLocaleString('en-IN', {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) : ''}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-700 whitespace-pre-wrap">{comment.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
             
             {/* Shipment Import Modal */}

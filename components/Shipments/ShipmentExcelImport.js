@@ -80,7 +80,7 @@ export default function ShipmentExcelImport({ onImport, onClose }) {
                 return;
             }
 
-            const requiredFields = ['shipmentNumber', 'poNumber', 'transporterId', 'shipmentDate', 'sku', 'sentQty'];
+            const requiredFields = ['shipmentNumber', 'poNumber', 'transporterId', 'shipmentDate', 'sentQty'];
             const dataValidation = validateParsedData(jsonData, requiredFields);
             if (!dataValidation.valid) {
                 const firstRow = jsonData[0] || {};

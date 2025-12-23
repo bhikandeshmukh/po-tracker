@@ -7,15 +7,20 @@ import ExcelImport from '../../components/Common/ExcelImport';
 import { Calendar, Clock, Package, Plus, MapPin, Building2, FileDown, Mail } from 'lucide-react';
 
 const statusColors = {
+    created: 'bg-purple-100 text-purple-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    in_transit: 'bg-blue-100 text-blue-800',
+    delivered: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    // Legacy status support
     scheduled: 'bg-blue-100 text-blue-800',
     confirmed: 'bg-green-100 text-green-800',
     in_progress: 'bg-yellow-100 text-yellow-800',
     completed: 'bg-purple-100 text-purple-800',
-    cancelled: 'bg-red-100 text-red-800',
     rescheduled: 'bg-orange-100 text-orange-800',
 };
 
-const AppointmentCard = ({ appointment, router, isCompleted, onDownloadPDF, onSendEmail }) => (
+const AppointmentCard = ({ appointment, router, isCompleted, onDownloadPDF, onSendEmail, onToggleEmailSent }) => (
     <div className={`p-5 hover:bg-gray-50 transition ${isCompleted ? 'opacity-75' : ''}`}>
         <div className="flex items-center space-x-3">
             <div 
@@ -44,6 +49,11 @@ const AppointmentCard = ({ appointment, router, isCompleted, onDownloadPDF, onSe
                     {appointment.vendorName && (
                         <span className="flex items-center">
                             <Building2 className="w-3 h-3 mr-1" />{appointment.vendorName}
+                        </span>
+                    )}
+                    {(appointment.vendorWarehouseName || appointment.vendorWarehouseId) && (
+                        <span className="flex items-center">
+                            <MapPin className="w-3 h-3 mr-1" />{appointment.vendorWarehouseName || appointment.vendorWarehouseId}
                         </span>
                     )}
                     {appointment.lrDocketNumber && (
@@ -78,7 +88,29 @@ const AppointmentCard = ({ appointment, router, isCompleted, onDownloadPDF, onSe
                     )}
                 </div>
             </div>
-            <div className="flex flex-col space-y-2 ml-3">
+            <div className="flex items-center space-x-2 ml-3">
+                {/* Email Sent Checkbox */}
+                <label 
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg cursor-pointer transition ${
+                        appointment.emailSent 
+                            ? 'bg-green-50 border border-green-300' 
+                            : 'bg-gray-50 border border-gray-300'
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <input
+                        type="checkbox"
+                        checked={appointment.emailSent || false}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            onToggleEmailSent(appointment, e.target.checked);
+                        }}
+                        className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                    />
+                    <span className={`text-sm font-medium ${appointment.emailSent ? 'text-green-700' : 'text-gray-600'}`}>
+                        {appointment.emailSent ? 'Sent' : 'Not Sent'}
+                    </span>
+                </label>
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -124,27 +156,58 @@ export default function Appointments() {
             if (response.success) {
                 const appointments = response.data;
                 
-                // Auto-fix: Add quantity to appointments that don't have it
+                // Auto-fix: Add quantity and warehouse to appointments
                 const fixPromises = appointments.map(async (appointment) => {
-                    if (!appointment.totalQuantity && appointment.shipmentId) {
+                    let needsUpdate = false;
+                    const updateData = {};
+                    
+                    // Fetch PO to get warehouse info
+                    if (appointment.poId && !appointment.vendorWarehouseName) {
                         try {
-                            // Fetch shipment to get quantity
-                            const shipmentResponse = await apiClient.getShipmentById(appointment.shipmentId);
-                            if (shipmentResponse.success && shipmentResponse.data.totalQuantity) {
-                                // Update appointment with quantity
-                                await apiClient.updateAppointment(appointment.appointmentId, {
-                                    totalQuantity: shipmentResponse.data.totalQuantity,
-                                    totalItems: shipmentResponse.data.totalItems || 0
-                                });
-                                // Update local data
-                                appointment.totalQuantity = shipmentResponse.data.totalQuantity;
-                                appointment.totalItems = shipmentResponse.data.totalItems;
-                                console.log(`Auto-fixed quantity for ${appointment.appointmentId}`);
+                            const poResponse = await apiClient.getPOById(appointment.poId);
+                            if (poResponse.success) {
+                                if (poResponse.data.vendorWarehouseName) {
+                                    appointment.vendorWarehouseName = poResponse.data.vendorWarehouseName;
+                                    updateData.vendorWarehouseName = poResponse.data.vendorWarehouseName;
+                                    needsUpdate = true;
+                                }
+                                if (poResponse.data.vendorWarehouseId) {
+                                    appointment.vendorWarehouseId = poResponse.data.vendorWarehouseId;
+                                    updateData.vendorWarehouseId = poResponse.data.vendorWarehouseId;
+                                    needsUpdate = true;
+                                }
                             }
                         } catch (err) {
-                            console.error(`Failed to auto-fix ${appointment.appointmentId}:`, err);
+                            console.error(`Failed to fetch PO for ${appointment.appointmentId}:`, err);
                         }
                     }
+                    
+                    // Fetch shipment to get quantity if missing
+                    if (!appointment.totalQuantity && appointment.shipmentId) {
+                        try {
+                            const shipmentResponse = await apiClient.getShipmentById(appointment.shipmentId);
+                            if (shipmentResponse.success && shipmentResponse.data.totalQuantity) {
+                                appointment.totalQuantity = shipmentResponse.data.totalQuantity;
+                                appointment.totalItems = shipmentResponse.data.totalItems || 0;
+                                updateData.totalQuantity = shipmentResponse.data.totalQuantity;
+                                updateData.totalItems = shipmentResponse.data.totalItems || 0;
+                                needsUpdate = true;
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch shipment for ${appointment.appointmentId}:`, err);
+                        }
+                    }
+                    
+                    // Update appointment if needed
+                    if (needsUpdate && Object.keys(updateData).length > 0) {
+                        try {
+                            await apiClient.updateAppointment(appointment.appointmentId, updateData);
+                            console.log(`Auto-fixed appointment ${appointment.appointmentId}`);
+                        } catch (err) {
+                            console.error(`Failed to update ${appointment.appointmentId}:`, err);
+                        }
+                    }
+                    
                     return appointment;
                 });
                 
@@ -305,6 +368,33 @@ Thank You`;
         setShowEmailModal(true);
     };
 
+    const handleToggleEmailSent = async (appointment, checked) => {
+        try {
+            // Update local state immediately for better UX
+            setAppointments(prev => prev.map(a => 
+                a.appointmentId === appointment.appointmentId 
+                    ? { ...a, emailSent: checked }
+                    : a
+            ));
+            
+            // Update in database
+            await apiClient.updateAppointment(appointment.appointmentId, { 
+                emailSent: checked,
+                emailSentAt: checked ? new Date().toISOString() : null
+            });
+            
+            console.log(`Email sent status updated for ${appointment.appointmentId}: ${checked}`);
+        } catch (error) {
+            console.error('Failed to update email sent status:', error);
+            // Revert on error
+            setAppointments(prev => prev.map(a => 
+                a.appointmentId === appointment.appointmentId 
+                    ? { ...a, emailSent: !checked }
+                    : a
+            ));
+        }
+    };
+
     const handleBulkImport = async (data) => {
         try {
             const results = [];
@@ -385,7 +475,7 @@ Thank You`;
                         {/* Upcoming & In Transit Section */}
                         {(() => {
                             const upcomingAppointments = appointments
-                                .filter(a => ['scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status))
+                                .filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status))
                                 .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
                             return upcomingAppointments.length > 0 && (
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -404,6 +494,7 @@ Thank You`;
                                                 isCompleted={false}
                                                 onDownloadPDF={handleDownloadPDF}
                                                 onSendEmail={handleSendEmail}
+                                                onToggleEmailSent={handleToggleEmailSent}
                                             />
                                         ))}
                                     </div>
@@ -412,9 +503,10 @@ Thank You`;
                         })()}
 
                         {/* Completed Section */}
+                        {/* Completed Section */}
                         {(() => {
                             const completedAppointments = appointments
-                                .filter(a => ['completed', 'cancelled'].includes(a.status))
+                                .filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status))
                                 .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
                             return completedAppointments.length > 0 && (
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -433,6 +525,7 @@ Thank You`;
                                                 isCompleted={true}
                                                 onDownloadPDF={handleDownloadPDF}
                                                 onSendEmail={handleSendEmail}
+                                                onToggleEmailSent={handleToggleEmailSent}
                                             />
                                         ))}
                                     </div>

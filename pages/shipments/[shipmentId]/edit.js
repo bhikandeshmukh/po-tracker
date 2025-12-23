@@ -15,6 +15,8 @@ export default function EditShipment() {
         newShipmentId: '',
         shipmentDate: '',
         expectedDeliveryDate: '',
+        lrDocketNumber: '',
+        invoiceNumber: '',
         notes: '',
         items: []
     });
@@ -31,6 +33,8 @@ export default function EditShipment() {
                         newShipmentId: shipment.shipmentId || shipmentId,
                         shipmentDate: shipment.shipmentDate?.split('T')[0] || '',
                         expectedDeliveryDate: shipment.expectedDeliveryDate?.split('T')[0] || '',
+                        lrDocketNumber: shipment.lrDocketNumber || '',
+                        invoiceNumber: shipment.invoiceNumber || '',
                         notes: shipment.notes || '',
                         items: shipment.items || []
                     });
@@ -54,6 +58,8 @@ export default function EditShipment() {
             const updateData = {
                 shipmentDate: formData.shipmentDate,
                 expectedDeliveryDate: formData.expectedDeliveryDate,
+                lrDocketNumber: formData.lrDocketNumber,
+                invoiceNumber: formData.invoiceNumber,
                 notes: formData.notes
             };
 
@@ -125,6 +131,34 @@ export default function EditShipment() {
                         </p>
                     </div>
 
+                    {/* Docket No */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Docket No (LR)
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.lrDocketNumber}
+                            onChange={(e) => setFormData({ ...formData, lrDocketNumber: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Enter LR/Docket number"
+                        />
+                    </div>
+
+                    {/* Invoice No */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Invoice No
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.invoiceNumber}
+                            onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Enter invoice number"
+                        />
+                    </div>
+
                     {/* Shipment Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -174,27 +208,31 @@ export default function EditShipment() {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shipped Qty</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered Qty</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {formData.items.map((item, idx) => (
                                         <tr key={idx}>
-                                            <td className="px-4 py-3 text-sm text-gray-900">{item.sku}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">{item.itemName}</td>
                                             <td className="px-4 py-3 text-sm text-gray-900 text-right">
                                                 <input
                                                     type="number"
                                                     value={item.shippedQuantity}
                                                     onChange={(e) => handleItemChange(idx, 'shippedQuantity', parseInt(e.target.value) || 0)}
-                                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-right"
+                                                    className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
                                                     min="0"
                                                 />
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-gray-900 text-right">₹{item.unitPrice}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                                                <input
+                                                    type="number"
+                                                    value={item.deliveredQuantity || 0}
+                                                    onChange={(e) => handleItemChange(idx, 'deliveredQuantity', parseInt(e.target.value) || 0)}
+                                                    className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                                                    min="0"
+                                                />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -101,7 +101,7 @@ export default function POExcelImport({ onImport, onClose }) {
             console.log('Parsed Excel data:', jsonData.slice(0, 2));
             console.log('First row keys:', Object.keys(jsonData[0] || {}));
 
-            const requiredFields = ['poNumber', 'vendorId', 'vendorWarehouseId', 'poDate', 'expectedDeliveryDate', 'sku', 'price', 'poQty', 'gstRate'];
+            const requiredFields = ['poNumber', 'vendorId', 'vendorWarehouseId', 'poDate', 'expectedDeliveryDate', 'poQty'];
             const dataValidation = validateParsedData(jsonData, requiredFields);
             if (!dataValidation.valid) {
                 // Show more detailed error
@@ -201,13 +201,10 @@ export default function POExcelImport({ onImport, onClose }) {
                                 vendorWarehouseId: po.vendorWarehouseId,
                                 poDate: po.poDate?.split('T')[0] || '',
                                 expectedDeliveryDate: po.expectedDeliveryDate?.split('T')[0] || '',
-                                sku: item.sku || item.itemId,
                                 poQty: item.poQuantity || 0,
-                                price: item.unitPrice,
-                                gstRate: item.gstRate || 18,
-                                mrp: item.mrp || item.unitPrice,
                                 qtySent: item.shippedQuantity || 0,
-                                qtyPending: item.pendingQuantity || item.poQuantity
+                                qtyPending: item.pendingQuantity || item.poQuantity,
+                                deliveredQty: item.deliveredQuantity || 0
                             });
                         });
                     } catch (err) {

@@ -90,6 +90,24 @@ async function getPurchaseOrder(req, res, poId) {
 
     const poData = poDoc.data();
     
+    // Fetch warehouse name if missing but vendorWarehouseId exists
+    if (!poData.vendorWarehouseName && poData.vendorWarehouseId && poData.vendorId) {
+        try {
+            const warehouseDoc = await db.collection('vendors')
+                .doc(poData.vendorId)
+                .collection('warehouses')
+                .doc(poData.vendorWarehouseId)
+                .get();
+            
+            if (warehouseDoc.exists) {
+                const warehouseData = warehouseDoc.data();
+                poData.vendorWarehouseName = warehouseData.warehouseName || warehouseData.name || poData.vendorWarehouseId;
+            }
+        } catch (err) {
+            console.error('Failed to fetch warehouse name:', err);
+        }
+    }
+    
     // Get items
     const itemsSnapshot = await db.collection('purchaseOrders')
         .doc(poId)

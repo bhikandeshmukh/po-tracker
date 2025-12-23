@@ -181,9 +181,6 @@ export default function Shipments() {
                                         <div className="text-sm font-medium text-gray-900">
                                             {shipment.totalQuantity} items
                                         </div>
-                                        <div className="text-sm text-gray-500">
-                                            ₹{shipment.totalAmount?.toLocaleString()}
-                                        </div>
                                     </div>
                                 </div>
                             </div>
