@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/gray_50">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="@color/white"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Appointment Details"
+            android:textSize="20sp"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Appointment Info -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                        <TextView android:id="@+id/tvAppointmentNumber" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/gray_900"/>
+                        <TextView android:id="@+id/tvStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/gray_200" android:layout_marginVertical="12dp"/>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="PO Number" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvPoNumber" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Vendor" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvVendor" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Warehouse" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvWarehouse" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Transporter" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvTransporter" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Date" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvScheduledDate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Time Slot" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvTimeSlot" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="LR/Docket" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvLrDocket" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                        <TextView android:layout_width="100dp" android:layout_height="wrap_content" android:text="Invoice" android:textColor="@color/gray_500"/>
+                        <TextView android:id="@+id/tvInvoice" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="@color/gray_900"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Quantity -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:gravity="center">
+
+                    <TextView android:id="@+id/tvTotalQty" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="32sp" android:textStyle="bold" android:textColor="@color/primary"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Total Quantity" android:textColor="@color/gray_500"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Email Sent -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Email Sent"
+                        android:textSize="16sp"
+                        android:textColor="@color/gray_900"/>
+
+                    <CheckBox
+                        android:id="@+id/cbEmailSent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"/>
+</LinearLayout>
