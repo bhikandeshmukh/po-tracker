@@ -1,4 +1,4 @@
-package com.potracker.app.ui
+package com.potracker.acpl.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -8,14 +8,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.potracker.app.adapters.CommentAdapter
-import com.potracker.app.adapters.ShipmentAdapter
-import com.potracker.app.databinding.ActivityPoDetailBinding
-import com.potracker.app.models.Comment
-import com.potracker.app.models.PurchaseOrder
-import com.potracker.app.models.Shipment
-import com.potracker.app.repository.FirebaseRepository
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.adapters.CommentAdapter
+import com.potracker.acpl.adapters.ShipmentAdapter
+import com.potracker.acpl.databinding.ActivityPoDetailBinding
+import com.potracker.acpl.models.Comment
+import com.potracker.acpl.models.PurchaseOrder
+import com.potracker.acpl.models.Shipment
+import com.potracker.acpl.repository.FirebaseRepository
+import com.potracker.acpl.utils.DateUtils
 import kotlinx.coroutines.launch
 
 class PODetailActivity : AppCompatActivity() {

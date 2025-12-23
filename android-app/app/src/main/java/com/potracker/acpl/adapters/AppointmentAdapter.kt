@@ -1,13 +1,13 @@
-package com.potracker.app.adapters
+package com.potracker.acpl.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.potracker.app.databinding.ItemAppointmentBinding
-import com.potracker.app.models.Appointment
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.databinding.ItemAppointmentBinding
+import com.potracker.acpl.models.Appointment
+import com.potracker.acpl.utils.DateUtils
 
 class AppointmentAdapter(
     private val onClick: (Appointment) -> Unit,

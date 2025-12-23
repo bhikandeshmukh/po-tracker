@@ -1,4 +1,4 @@
-package com.potracker.app.models
+package com.potracker.acpl.models
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId

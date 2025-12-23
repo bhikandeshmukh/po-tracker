@@ -1,11 +1,11 @@
-package com.potracker.app.ui
+package com.potracker.acpl.ui
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
-import com.potracker.app.R
+import com.potracker.acpl.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

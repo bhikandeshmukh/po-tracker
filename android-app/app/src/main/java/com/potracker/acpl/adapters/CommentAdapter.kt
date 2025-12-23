@@ -1,13 +1,13 @@
-package com.potracker.app.adapters
+package com.potracker.acpl.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.potracker.app.databinding.ItemCommentBinding
-import com.potracker.app.models.Comment
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.databinding.ItemCommentBinding
+import com.potracker.acpl.models.Comment
+import com.potracker.acpl.utils.DateUtils
 
 class CommentAdapter : ListAdapter<Comment, CommentAdapter.ViewHolder>(DiffCallback()) {
 

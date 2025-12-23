@@ -1,14 +1,14 @@
-package com.potracker.app.ui
+package com.potracker.acpl.ui
 
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.potracker.app.databinding.ActivityAppointmentDetailBinding
-import com.potracker.app.models.Appointment
-import com.potracker.app.repository.FirebaseRepository
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.databinding.ActivityAppointmentDetailBinding
+import com.potracker.acpl.models.Appointment
+import com.potracker.acpl.repository.FirebaseRepository
+import com.potracker.acpl.utils.DateUtils
 import kotlinx.coroutines.launch
 
 class AppointmentDetailActivity : AppCompatActivity() {

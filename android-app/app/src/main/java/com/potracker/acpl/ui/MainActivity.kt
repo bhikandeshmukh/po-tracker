@@ -1,4 +1,4 @@
-package com.potracker.app.ui
+package com.potracker.acpl.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,14 +9,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
-import com.potracker.app.adapters.AppointmentAdapter
-import com.potracker.app.adapters.POAdapter
-import com.potracker.app.adapters.ShipmentAdapter
-import com.potracker.app.databinding.ActivityMainBinding
-import com.potracker.app.models.Appointment
-import com.potracker.app.models.PurchaseOrder
-import com.potracker.app.models.Shipment
-import com.potracker.app.repository.FirebaseRepository
+import com.potracker.acpl.adapters.AppointmentAdapter
+import com.potracker.acpl.adapters.POAdapter
+import com.potracker.acpl.adapters.ShipmentAdapter
+import com.potracker.acpl.databinding.ActivityMainBinding
+import com.potracker.acpl.models.Appointment
+import com.potracker.acpl.models.PurchaseOrder
+import com.potracker.acpl.models.Shipment
+import com.potracker.acpl.repository.FirebaseRepository
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {

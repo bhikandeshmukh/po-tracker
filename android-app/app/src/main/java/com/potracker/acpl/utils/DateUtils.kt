@@ -1,4 +1,4 @@
-package com.potracker.app.utils
+package com.potracker.acpl.utils
 
 import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat

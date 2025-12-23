@@ -1,4 +1,4 @@
-package com.potracker.app.ui
+package com.potracker.acpl.ui
 
 import android.os.Bundle
 import android.view.View
@@ -6,10 +6,10 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.potracker.app.databinding.ActivityShipmentDetailBinding
-import com.potracker.app.models.Shipment
-import com.potracker.app.repository.FirebaseRepository
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.databinding.ActivityShipmentDetailBinding
+import com.potracker.acpl.models.Shipment
+import com.potracker.acpl.repository.FirebaseRepository
+import com.potracker.acpl.utils.DateUtils
 import kotlinx.coroutines.launch
 
 class ShipmentDetailActivity : AppCompatActivity() {

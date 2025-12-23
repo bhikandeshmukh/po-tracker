@@ -1,9 +1,9 @@
-package com.potracker.app.repository
+package com.potracker.acpl.repository
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.potracker.app.models.*
+import com.potracker.acpl.models.*
 import kotlinx.coroutines.tasks.await
 
 class FirebaseRepository {

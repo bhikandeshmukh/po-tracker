@@ -1,13 +1,13 @@
-package com.potracker.app.adapters
+package com.potracker.acpl.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.potracker.app.databinding.ItemShipmentBinding
-import com.potracker.app.models.Shipment
-import com.potracker.app.utils.DateUtils
+import com.potracker.acpl.databinding.ItemShipmentBinding
+import com.potracker.acpl.models.Shipment
+import com.potracker.acpl.utils.DateUtils
 
 class ShipmentAdapter(private val onClick: (Shipment) -> Unit) : 
     ListAdapter<Shipment, ShipmentAdapter.ViewHolder>(DiffCallback()) {

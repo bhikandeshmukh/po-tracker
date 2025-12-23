@@ -44,41 +44,107 @@ jobs:
         {
           "project_info": {
             "project_number": "123456789000",
-            "project_id": "po-tracker-demo",
-            "storage_bucket": "po-tracker-demo.appspot.com"
+            "project_id": "po-tracker-acpl",
+            "storage_bucket": "po-tracker-acpl.appspot.com"
           },
           "client": [
             {
               "client_info": {
-                "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890abcdef",
+                "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890acpl",
                 "android_client_info": {
-                  "package_name": "com.potracker.app"
+                  "package_name": "com.potracker.acpl"
                 }
               },
               "oauth_client": [
                 {
-                  "client_id": "123456789000-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                  "client_id": "123456789000-acplabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
                   "client_type": 1,
                   "android_info": {
-                    "package_name": "com.potracker.app",
-                    "certificate_hash": "abcdefghijklmnopqrstuvwxyz1234567890abcd"
+                    "package_name": "com.potracker.acpl",
+                    "certificate_hash": "acplabcdefghijklmnopqrstuvwxyz1234567890"
                   }
                 },
                 {
-                  "client_id": "123456789000-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                  "client_id": "123456789000-acplabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
                   "client_type": 3
                 }
               ],
               "api_key": [
                 {
-                  "current_key": "AIzaSyDemoKeyForBuildPurposesOnly123456789"
+                  "current_key": "AIzaSyACPLDemoKeyForBuildPurposesOnly123456789"
                 }
               ],
               "services": {
                 "appinvite_service": {
                   "other_platform_oauth_client": [
                     {
-                      "client_id": "123456789000-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                      "client_id": "123456789000-acplabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                      "client_type": 3
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890acpldev",
+                "android_client_info": {
+                  "package_name": "com.potracker.acpl.dev"
+                }
+              },
+              "oauth_client": [
+                {
+                  "client_id": "123456789000-acpldevabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                  "client_type": 1,
+                  "android_info": {
+                    "package_name": "com.potracker.acpl.dev",
+                    "certificate_hash": "acpldevabcdefghijklmnopqrstuvwxyz1234567890"
+                  }
+                }
+              ],
+              "api_key": [
+                {
+                  "current_key": "AIzaSyACPLDevDemoKeyForBuildPurposesOnly123456789"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": [
+                    {
+                      "client_id": "123456789000-acpldevabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                      "client_type": 3
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890acplpro",
+                "android_client_info": {
+                  "package_name": "com.potracker.acpl.pro"
+                }
+              },
+              "oauth_client": [
+                {
+                  "client_id": "123456789000-acplproabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
+                  "client_type": 1,
+                  "android_info": {
+                    "package_name": "com.potracker.acpl.pro",
+                    "certificate_hash": "acplproabcdefghijklmnopqrstuvwxyz1234567890"
+                  }
+                }
+              ],
+              "api_key": [
+                {
+                  "current_key": "AIzaSyACPLProDemoKeyForBuildPurposesOnly123456789"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": [
+                    {
+                      "client_id": "123456789000-acplproabcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
                       "client_type": 3
                     }
                   ]

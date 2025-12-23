@@ -51,7 +51,7 @@ export default function Login() {
                 </div>
 
                 <div className="text-indigo-200 text-sm">
-                    © 2024 PO Tracker. All rights reserved.
+                    © 2026 PO Tracker. Bhikan Deshmukh All rights reserved.
                 </div>
             </div>
 

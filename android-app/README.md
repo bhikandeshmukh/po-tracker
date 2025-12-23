@@ -19,7 +19,7 @@ Professional Android application for Purchase Order tracking with Firebase Fires
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your project (same as web app)
-3. Add Android app with package name: `com.potracker.app`
+3. Add Android app with package name: `com.potracker.acpl` (or `com.potracker.acpl.dev` for debug, `com.potracker.acpl.pro` for release)
 4. Download `google-services.json`
 5. Place it in `android-app/app/` folder
 
@@ -49,7 +49,7 @@ APK will be at: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 📱 App Details
 
-- **Package**: `com.potracker.app`
+- **Package**: `com.potracker.acpl` (Debug: `com.potracker.acpl.dev`, Release: `com.potracker.acpl.pro`)
 - **Min SDK**: 21 (Android 5.0+)
 - **Target SDK**: 33 (Android 13)
 - **Version**: 1.0.0

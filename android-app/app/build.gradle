@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.potracker.app'
+    namespace 'com.potracker.acpl'
     compileSdk 33
     
     defaultConfig {
-        applicationId "com.potracker.app"
+        applicationId "com.potracker.acpl"
         minSdk 21
         targetSdk 33
         versionCode 1
@@ -21,16 +21,18 @@ android {
 
     buildTypes {
         release {
+            applicationId "com.potracker.acpl.pro"
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable false
+            versionNameSuffix "-pro"
         }
         debug {
+            applicationId "com.potracker.acpl.dev"
             minifyEnabled false
             debuggable true
-            applicationIdSuffix ".debug"
-            versionNameSuffix "-debug"
+            versionNameSuffix "-dev"
         }
     }
     
