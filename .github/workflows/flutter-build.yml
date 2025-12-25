@@ -1,0 +1,135 @@
+name: Flutter APK Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'flutter-app/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'flutter-app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.9'
+        channel: 'stable'
+        cache: true
+
+    - name: Create google-services.json
+      run: |
+        mkdir -p flutter-app/android/app
+        if [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > flutter-app/android/app/google-services.json
+        else
+          cat > flutter-app/android/app/google-services.json << 'EOF'
+        {
+          "project_info": {
+            "project_number": "123456789000",
+            "project_id": "po-tracker-acpl",
+            "storage_bucket": "po-tracker-acpl.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890acpl",
+                "android_client_info": {
+                  "package_name": "com.potracker.acpl"
+                }
+              },
+              "oauth_client": [],
+              "api_key": [
+                {
+                  "current_key": "AIzaSyDemoKeyForBuildPurposesOnly"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": []
+                }
+              }
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF
+        fi
+
+    - name: Get dependencies
+      run: |
+        cd flutter-app
+        flutter pub get
+
+    - name: Build APK (Debug)
+      run: |
+        cd flutter-app
+        flutter build apk --debug
+
+    - name: Build APK (Release)
+      run: |
+        cd flutter-app
+        flutter build apk --release
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: flutter-app-debug
+        path: flutter-app/build/app/outputs/flutter-apk/app-debug.apk
+        retention-days: 30
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: flutter-app-release
+        path: flutter-app/build/app/outputs/flutter-apk/app-release.apk
+        retention-days: 30
+
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: flutter-v${{ github.run_number }}
+        name: PO Tracker Flutter v${{ github.run_number }}
+        body: |
+          ## PO Tracker Flutter App
+          
+          **Features:**
+          - Purchase Order Management
+          - Shipment Tracking
+          - Appointment Scheduling
+          - Real-time Firebase Sync
+          - Cross-platform (Android/iOS)
+          
+          **Installation:**
+          1. Download the APK file
+          2. Enable "Install from Unknown Sources" in Android settings
+          3. Install the APK
+          
+          **Version:** ${{ github.run_number }}
+          **Build Date:** ${{ github.event.head_commit.timestamp }}
+        files: |
+          flutter-app/build/app/outputs/flutter-apk/app-debug.apk
+          flutter-app/build/app/outputs/flutter-apk/app-release.apk
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
