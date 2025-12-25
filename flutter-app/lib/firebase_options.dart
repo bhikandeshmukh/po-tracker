@@ -48,10 +48,10 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCqvpQ_4f8CWWJqm52XV3C6MliwsPC6Q0s',
-    appId: '1:715615200744:android:e90a79d4c8aa0afeb7705d',
-    messagingSenderId: '715615200744',
-    projectId: 'ecommerce-po-tracking-app',
-    storageBucket: 'ecommerce-po-tracking-app.firebasestorage.app',
+    apiKey: 'AIzaSyCn5eKzvKygZDwEJqhLWWBFjDWHBMM9ns0',
+    appId: '1:785312027016:android:e93bb4dfecac905d0c6a3d',
+    messagingSenderId: '785312027016',
+    projectId: 'root-po-tracker',
+    storageBucket: 'root-po-tracker.firebasestorage.app',
   );
 }
