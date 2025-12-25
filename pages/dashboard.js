@@ -9,10 +9,10 @@ import Layout from '../components/Layout/Layout';
 import StatCard from '../components/Dashboard/StatCard';
 import SalesChart from '../components/Dashboard/SalesChart';
 import ActivityFeed from '../components/Dashboard/ActivityFeed';
-import { 
-    Package, 
-    TrendingUp, 
-    Truck, 
+import {
+    Package,
+    TrendingUp,
+    Truck,
     AlertCircle,
     Clock,
     Users,
@@ -24,6 +24,8 @@ export default function Dashboard() {
     const { user } = useAuth();
     const [metrics, setMetrics] = useState(null);
     const [activities, setActivities] = useState([]);
+    const [chartData, setChartData] = useState([]);
+    const [period, setPeriod] = useState('6months');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
@@ -32,27 +34,39 @@ export default function Dashboard() {
         try {
             setError(null);
             if (forceRefresh && !loading) setRefreshing(true);
-            
+
             console.log('Fetching dashboard data...', forceRefresh ? '(forced refresh)' : '');
-            const [metricsRes, activitiesRes] = await Promise.all([
+
+            // Pass forceRefresh to all calls
+            const params = forceRefresh ? { refresh: 'true' } : {};
+
+            const [metricsRes, activitiesRes, chartRes] = await Promise.all([
                 apiClient.getDashboardMetrics(forceRefresh),
-                apiClient.getRecentActivities({ limit: 10 })
+                apiClient.getRecentActivities(params),
+                apiClient.getChartData({ period, ...params, type: 'quantity' })
             ]);
 
             console.log('Metrics response:', metricsRes);
             console.log('Activities response:', activitiesRes);
+            console.log('Chart response:', chartRes);
 
             if (metricsRes.success) {
                 setMetrics(metricsRes.data);
-                console.log('Metrics set:', metricsRes.data);
             } else {
                 console.error('Metrics fetch failed:', metricsRes.error);
             }
-            
+
             if (activitiesRes.success) {
                 setActivities(activitiesRes.data);
             } else {
                 console.error('Activities fetch failed:', activitiesRes.error);
+            }
+
+            if (chartRes.success) {
+                setChartData(chartRes.data || []);
+            } else {
+                console.error('Chart fetch failed:', chartRes.error);
+                setChartData([]);
             }
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
@@ -68,12 +82,13 @@ export default function Dashboard() {
 
         if (user) {
             // Force refresh on initial load
-            fetchDashboardData(true);
-            
-            // Auto-refresh every 30 seconds
+            fetchDashboardData(false); // Use cache first
+
+            // Auto-refresh every 5 minutes (300000ms) to match cache TTL, or 30s if desired
+            // Changing to 60s for better experience but less load
             refreshInterval = setInterval(() => {
                 fetchDashboardData(true);
-            }, 30000);
+            }, 60000);
         }
 
         return () => {
@@ -81,7 +96,7 @@ export default function Dashboard() {
                 clearInterval(refreshInterval);
             }
         };
-    }, [user]);
+    }, [user, period]); // Refetch when period changes
 
     if (loading) {
         return (
@@ -100,7 +115,7 @@ export default function Dashboard() {
                     <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load dashboard</h2>
                     <p className="text-gray-600 mb-4">{error}</p>
-                    <button 
+                    <button
                         onClick={() => window.location.reload()}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                     >
@@ -184,14 +199,18 @@ export default function Dashboard() {
                                         Monthly overview of Order vs Shipped vs Delivered
                                     </p>
                                 </div>
-                                <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                    <option>Last 6 months</option>
-                                    <option>Last 12 months</option>
-                                    <option>This year</option>
+                                <select
+                                    value={period}
+                                    onChange={(e) => setPeriod(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                >
+                                    <option value="6months">Last 6 months</option>
+                                    <option value="12months">Last 12 months</option>
+                                    <option value="thisYear">This year</option>
                                 </select>
                             </div>
                             <div className="flex-1">
-                                <SalesChart />
+                                <SalesChart data={chartData} loading={loading && !metrics} />
                             </div>
                         </div>
                     </div>
@@ -213,7 +232,7 @@ export default function Dashboard() {
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
                     <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <button 
+                        <button
                             onClick={() => router.push('/purchase-orders')}
                             className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 text-left transition"
                         >
@@ -221,7 +240,7 @@ export default function Dashboard() {
                             <div className="font-medium">Create PO</div>
                             <div className="text-sm text-indigo-100">New purchase order</div>
                         </button>
-                        <button 
+                        <button
                             onClick={() => router.push('/shipments')}
                             className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 text-left transition"
                         >
@@ -229,7 +248,7 @@ export default function Dashboard() {
                             <div className="font-medium">Track Shipment</div>
                             <div className="text-sm text-indigo-100">Monitor deliveries</div>
                         </button>
-                        <button 
+                        <button
                             onClick={() => router.push('/vendors')}
                             className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 text-left transition"
                         >
@@ -237,7 +256,7 @@ export default function Dashboard() {
                             <div className="font-medium">Manage Vendors</div>
                             <div className="text-sm text-indigo-100">View all vendors</div>
                         </button>
-                        <button 
+                        <button
                             onClick={() => router.push('/reports')}
                             className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 text-left transition"
                         >
