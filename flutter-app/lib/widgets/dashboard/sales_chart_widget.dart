@@ -77,7 +77,7 @@ class SalesChartWidget extends StatelessWidget {
                 gridData: const FlGridData(show: false),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => Colors.blueGrey,
+                    tooltipBgColor: Colors.blueGrey,
                   ),
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/models.dart';
+import '../models/dashboard_metrics.dart';
 
 class FirebaseRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -122,8 +123,7 @@ class FirebaseRepository {
 
       for (var po in pos) {
         totalOrderQty += po.totalQuantity;
-        totalShippedQty += po.sentQuantity; // Assuming sentQuantity exists on PO model
-        // Note: You might need to adjust logic if sentQuantity isn't directly on PO or calculate from items
+        totalShippedQty += po.shippedQuantity;
         
         if (po.status == 'completed') {
           completedPOs++;
@@ -132,26 +132,15 @@ class FirebaseRepository {
         }
       }
       
-      // Basic calculation if sentQuantity is maintained on PO, otherwise derivation needed
       totalPendingQty = totalOrderQty - totalShippedQty; 
       if (totalPendingQty < 0) totalPendingQty = 0;
 
       for (var shipment in shipments) {
          if (shipment.status == 'delivered') {
-           // This is rough approximation for metrics if item-level aggregation isn't done
-           // ideally we sum up items in delivered shipments
+           totalDeliveredQty += shipment.totalQuantity;
          } else if (shipment.status == 'in_transit') {
            inTransitShipments++;
          }
-      }
-      
-      // Calculate true Delivered Qty from shipments (more accurate)
-      for (var shipment in shipments) {
-          if (shipment.status == 'delivered') {
-              for (var item in shipment.items) {
-                  totalDeliveredQty += item.quantity;
-              }
-          }
       }
 
       return DashboardMetrics(

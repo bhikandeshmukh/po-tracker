@@ -8,6 +8,7 @@ import '../widgets/shipment_card.dart';
 import '../widgets/appointment_card.dart';
 import 'po_detail_screen.dart';
 import 'shipment_detail_screen.dart';
+import 'appointment_detail_screen.dart';
 import 'dashboard_screen.dart';
 
 class MainScreen extends StatefulWidget {
