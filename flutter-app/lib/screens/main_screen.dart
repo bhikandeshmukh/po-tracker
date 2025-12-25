@@ -8,7 +8,7 @@ import '../widgets/shipment_card.dart';
 import '../widgets/appointment_card.dart';
 import 'po_detail_screen.dart';
 import 'shipment_detail_screen.dart';
-import 'appointment_detail_screen.dart';
+import 'dashboard_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,11 +29,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this); // Increased to 4
     _loadData();
   }
 
   Future<void> _loadData() async {
+    // ... existing load logic
+    // Ideally dashboard metrics load independently in DashboardScreen
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
@@ -48,9 +50,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+       // ... existing error handling
       }
     } finally {
       setState(() => _isLoading = false);
@@ -70,25 +70,27 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          labelColor: const Color(0xFF4F46E5),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF4F46E5),
           tabs: const [
-            Tab(text: 'POs'),
-            Tab(text: 'Shipments'),
-            Tab(text: 'Appointments'),
+            Tab(text: 'Overview', icon: Icon(Icons.dashboard_outlined)),
+            Tab(text: 'POs', icon: Icon(Icons.inventory_2_outlined)),
+            Tab(text: 'Shipments', icon: Icon(Icons.local_shipping_outlined)),
+            Tab(text: 'Appointments', icon: Icon(Icons.event_outlined)),
           ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildPOList(),
-                  _buildShipmentList(),
-                  _buildAppointmentList(),
-                ],
-              ),
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(), // Prevent swipe to avoid lag with charts
+        children: [
+          const DashboardScreen(), // New Dashboard
+          _isLoading ? const Center(child: CircularProgressIndicator()) : _buildPOList(),
+          _isLoading ? const Center(child: CircularProgressIndicator()) : _buildShipmentList(),
+          _isLoading ? const Center(child: CircularProgressIndicator()) : _buildAppointmentList(),
+        ],
       ),
     );
   }

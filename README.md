@@ -39,6 +39,19 @@ A comprehensive Purchase Order tracking and management system built with Next.js
 │   ├── Transporters/        # Transporter components
 │   └── Vendors/             # Vendor components
 │
+├── flutter-app/             # Flutter Mobile Application
+│   ├── android/             # Android native code
+│   ├── ios/                 # iOS native code
+│   ├── lib/                 # Dart source code
+│   │   ├── models/          # Data models
+│   │   ├── screens/         # UI screens
+│   │   ├── services/        # Firebase/Auth services
+│   │   ├── widgets/         # Reusable widgets
+│   │   ├── firebase_options.dart # Firebase config
+│   │   └── main.dart        # Entry point
+│   ├── pubspec.yaml         # Dart dependencies
+│   └── README.md            # Mobile app specific docs
+│
 ├── lib/                     # Shared libraries
 │   ├── firebase.js          # Firebase client config
 │   ├── firebase-admin.js    # Firebase Admin SDK
@@ -140,6 +153,24 @@ Open [http://localhost:3000](http://localhost:3000)
 - Real-time metrics and statistics
 - Recent activity feed
 - Quick access to all modules
+
+### Mobile App (Flutter)
+- **Framework:** Flutter (Android/iOS)
+- **Features:** 
+    - Login with Email/Password
+    - Dashboard with POs, Shipments, and Appointments tabs
+    - Real-time updates via Firestore
+    - Search functionality
+- **Build Instructions:**
+    ```bash
+    cd flutter-app
+    flutter pub get
+    flutter build apk --release
+    ```
+- **Firebase Config:**
+    - Uses `root-po-tracker` project.
+    - `google-services.json` must be present in `android/app/`.
+    - `firebase_options.dart` uses `DefaultFirebaseOptions`.
 
 ## Database Schema
 

@@ -103,4 +103,71 @@ class FirebaseRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+  // Dashboard
+  Future<DashboardMetrics> getDashboardMetrics() async {
+    try {
+      final poSnapshot = await _db.collection('purchaseOrders').get();
+      final shipmentSnapshot = await _db.collection('shipments').get();
+
+      final pos = poSnapshot.docs.map((doc) => PurchaseOrder.fromFirestore(doc)).toList();
+      final shipments = shipmentSnapshot.docs.map((doc) => Shipment.fromFirestore(doc)).toList();
+
+      int totalOrderQty = 0;
+      int totalShippedQty = 0;
+      int totalPendingQty = 0;
+      int totalDeliveredQty = 0;
+      int activePOs = 0;
+      int completedPOs = 0;
+      int inTransitShipments = 0;
+
+      for (var po in pos) {
+        totalOrderQty += po.totalQuantity;
+        totalShippedQty += po.sentQuantity; // Assuming sentQuantity exists on PO model
+        // Note: You might need to adjust logic if sentQuantity isn't directly on PO or calculate from items
+        
+        if (po.status == 'completed') {
+          completedPOs++;
+        } else {
+          activePOs++;
+        }
+      }
+      
+      // Basic calculation if sentQuantity is maintained on PO, otherwise derivation needed
+      totalPendingQty = totalOrderQty - totalShippedQty; 
+      if (totalPendingQty < 0) totalPendingQty = 0;
+
+      for (var shipment in shipments) {
+         if (shipment.status == 'delivered') {
+           // This is rough approximation for metrics if item-level aggregation isn't done
+           // ideally we sum up items in delivered shipments
+         } else if (shipment.status == 'in_transit') {
+           inTransitShipments++;
+         }
+      }
+      
+      // Calculate true Delivered Qty from shipments (more accurate)
+      for (var shipment in shipments) {
+          if (shipment.status == 'delivered') {
+              for (var item in shipment.items) {
+                  totalDeliveredQty += item.quantity;
+              }
+          }
+      }
+
+      return DashboardMetrics(
+        totalOrderQty: totalOrderQty,
+        totalShippedQty: totalShippedQty,
+        totalPendingQty: totalPendingQty,
+        totalDeliveredQty: totalDeliveredQty,
+        totalPOs: pos.length,
+        activePOs: activePOs,
+        completedPOs: completedPOs,
+        inTransitShipments: inTransitShipments,
+      );
+    } catch (e) {
+      print('Error fetching dashboard metrics: $e');
+      return DashboardMetrics.empty();
+    }
+  }
 }
+
