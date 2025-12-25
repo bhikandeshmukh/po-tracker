@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/models.dart';
+import '../models/dashboard_metrics.dart';
 import '../services/firebase_repository.dart';
 import '../widgets/dashboard/stat_card_modern.dart';
 import '../widgets/dashboard/sales_chart_widget.dart';
