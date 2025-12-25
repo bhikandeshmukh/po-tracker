@@ -5,10 +5,14 @@ import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 
+import 'firebase_options.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
     debugPrint('Firebase init error: $e');
   }

@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "715615200744",
+        "project_id": "ecommerce-po-tracking-app",
+        "storage_bucket": "ecommerce-po-tracking-app.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:715615200744:android:e90a79d4c8aa0afeb7705d",
+                "android_client_info": {
+                    "package_name": "com.potracker.acpl"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyCqvpQ_4f8CWWJqm52XV3C6MliwsPC6Q0s"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}
