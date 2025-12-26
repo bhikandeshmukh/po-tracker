@@ -313,6 +313,86 @@ fun AppointmentsScreen(
 }
 
 @Composable
+fun ShipmentsScreen(
+    viewModel: com.potracker.app.ui.viewmodel.ShipmentsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(com.potracker.app.ui.theme.GlassBackground)
+    ) {
+        GradientHeader(title = "Shipments", subtitle = "Track your deliveries")
+
+        when (val state = uiState) {
+            is com.potracker.app.ui.viewmodel.ShipmentsUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.ShipmentsUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Error: ${state.message}", color = Color.Red)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.ShipmentsUiState.Success -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(state.shipments) { shipment ->
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = shipment.shipmentNumber,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "PO: ${shipment.poNumber}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    StatusBadge(status = shipment.status)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Vendor: ${shipment.vendorName ?: "N/A"}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Qty: ${shipment.totalQuantity ?: 0}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        text = "Due: ${shipment.expectedDeliveryDate ?: "N/A"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun StatusBadge(status: String) {
     val color = when (status.lowercase()) {
         "approved", "delivered", "completed", "confirmed" -> Color(0xFF22C55E)

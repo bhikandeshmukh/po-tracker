@@ -13,4 +13,7 @@ interface ApiService {
 
     @GET("appointments")
     suspend fun getAppointments(@Query("limit") limit: Int = 50): com.potracker.app.data.model.AppointmentResponse
+
+    @GET("shipments")
+    suspend fun getShipments(@Query("limit") limit: Int = 50): com.potracker.app.data.model.ShipmentResponse
 }

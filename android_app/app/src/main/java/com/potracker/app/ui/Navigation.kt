@@ -102,7 +102,7 @@ fun MainScreen() {
                 composable(Screen.Dashboard.route) { DashboardScreen() }
                 composable(Screen.Orders.route) { OrdersScreen() }
                 composable(Screen.Appointments.route) { AppointmentsScreen() }
-                composable(Screen.Shipments.route) { PlaceholderScreen("Shipments") }
+                composable(Screen.Shipments.route) { ShipmentsScreen() }
                 composable(Screen.Profile.route) { PlaceholderScreen("Profile") }
             }
         }
