@@ -4,11 +4,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,18 +19,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.potracker.app.R
 import com.potracker.app.ui.components.GlassCard
 import com.potracker.app.ui.components.GradientHeader
 import com.potracker.app.ui.components.MetricCard
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material3.Surface
 import com.potracker.app.ui.theme.GlassBackground
 
 @Composable
@@ -46,7 +41,7 @@ fun DashboardScreen(
         when (val state = uiState) {
             is com.potracker.app.ui.viewmodel.DashboardUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                    CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
                 }
             }
             is com.potracker.app.ui.viewmodel.DashboardUiState.Error -> {
@@ -161,7 +156,7 @@ fun OrdersScreen(
         when (val state = uiState) {
             is com.potracker.app.ui.viewmodel.OrdersUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                    CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
                 }
             }
             is com.potracker.app.ui.viewmodel.OrdersUiState.Error -> {
@@ -242,7 +237,7 @@ fun AppointmentsScreen(
         when (val state = uiState) {
             is com.potracker.app.ui.viewmodel.AppointmentsUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                    CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
                 }
             }
             is com.potracker.app.ui.viewmodel.AppointmentsUiState.Error -> {
@@ -328,7 +323,7 @@ fun ShipmentsScreen(
         when (val state = uiState) {
             is com.potracker.app.ui.viewmodel.ShipmentsUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                    CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
                 }
             }
             is com.potracker.app.ui.viewmodel.ShipmentsUiState.Error -> {
@@ -434,4 +429,3 @@ fun PlaceholderScreen(title: String) {
         }
     }
 }
-
