@@ -22,6 +22,12 @@ import com.potracker.app.R
 import com.potracker.app.ui.components.GlassCard
 import com.potracker.app.ui.components.GradientHeader
 import com.potracker.app.ui.components.MetricCard
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material3.Surface
 import com.potracker.app.ui.theme.GlassBackground
 
 @Composable
@@ -140,11 +146,202 @@ fun ActivityItem(title: String, time: String) {
 }
 
 @Composable
+fun OrdersScreen(
+    viewModel: com.potracker.app.ui.viewmodel.OrdersViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(com.potracker.app.ui.theme.GlassBackground)
+    ) {
+        GradientHeader(title = "Purchase Orders", subtitle = "Manage your orders")
+
+        when (val state = uiState) {
+            is com.potracker.app.ui.viewmodel.OrdersUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.OrdersUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Error: ${state.message}", color = Color.Red)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.OrdersUiState.Success -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(state.orders) { order ->
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = order.poNumber,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    StatusBadge(status = order.status)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Vendor: ${order.vendorName}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Qty: ${order.totalQuantity ?: 0}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = "Sent: ${order.shippedQuantity ?: 0}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF22C55E)
+                                        )
+                                    }
+                                    Text(
+                                        text = "Pending: ${order.pendingQuantity ?: 0}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFFEAB308)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppointmentsScreen(
+    viewModel: com.potracker.app.ui.viewmodel.AppointmentsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(com.potracker.app.ui.theme.GlassBackground)
+    ) {
+        GradientHeader(title = "Appointments", subtitle = "Delivery schedule")
+
+        when (val state = uiState) {
+            is com.potracker.app.ui.viewmodel.AppointmentsUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator(color = com.potracker.app.ui.theme.PrimaryBlue)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.AppointmentsUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Error: ${state.message}", color = Color.Red)
+                }
+            }
+            is com.potracker.app.ui.viewmodel.AppointmentsUiState.Success -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(state.appointments) { appt ->
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = appt.appointmentNumber,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "PO: ${appt.poNumber}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    StatusBadge(status = appt.status)
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.CalendarToday,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = appt.scheduledDate ?: "Date not set",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Icon(
+                                        Icons.Default.AccessTime,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = appt.scheduledTimeSlot ?: "Slot not set",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusBadge(status: String) {
+    val color = when (status.lowercase()) {
+        "approved", "delivered", "completed", "confirmed" -> Color(0xFF22C55E)
+        "pending", "scheduled", "in_progress", "partial_sent", "partial_completed" -> Color(0xFFEAB308)
+        "cancelled" -> Color(0xFFEF4444)
+        "in_transit" -> Color(0xFF3B82F6)
+        else -> Color.Gray
+    }
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Text(
+            text = status.replace("_", " ").uppercase(),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
 fun PlaceholderScreen(title: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(GlassBackground)
+            .background(com.potracker.app.ui.theme.GlassBackground)
     ) {
         GradientHeader(title = title, subtitle = "Manage your $title here")
         Box(
@@ -157,3 +354,4 @@ fun PlaceholderScreen(title: String) {
         }
     }
 }
+
