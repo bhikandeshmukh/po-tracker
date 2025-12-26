@@ -20,10 +20,19 @@ import com.potracker.app.ui.theme.PrimaryBlue
 import com.potracker.app.ui.theme.PrimaryPurple
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    viewModel: com.potracker.app.ui.viewmodel.LoginViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState) {
+        if (uiState is com.potracker.app.ui.viewmodel.LoginUiState.Success) {
+            onLoginSuccess()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -60,6 +69,15 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                if (uiState is com.potracker.app.ui.viewmodel.LoginUiState.Error) {
+                    Text(
+                        text = (uiState as com.potracker.app.ui.viewmodel.LoginUiState.Error).message,
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -85,17 +103,16 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
                 Button(
                     onClick = {
-                        isLoading = true
-                        // Simulation of login
-                        onLoginSuccess()
+                        viewModel.login(email, password)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    enabled = uiState !is com.potracker.app.ui.viewmodel.LoginUiState.Loading
                 ) {
-                    if (isLoading) {
+                    if (uiState is com.potracker.app.ui.viewmodel.LoginUiState.Loading) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                     } else {
                         Text("Sign In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
