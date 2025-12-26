@@ -1,14 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.google.services)
 }
 
 android {
-    namespace = "com.potracker.app"
+    namespace = "com.potracker.acpl"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.potracker.app"
+        applicationId = "com.potracker.acpl"
         minSdk = 29 // Android 10
         targetSdk = 34
         versionCode = 1
