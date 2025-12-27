@@ -1,7 +1,7 @@
 // components/Layout/Layout.js
 // Main layout with sidebar and header
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth-client';
@@ -154,8 +154,8 @@ export default function Layout({ children }) {
                                     key={item.name}
                                     href={item.href}
                                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${isActive
-                                            ? 'bg-indigo-50 text-indigo-600'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                        ? 'bg-indigo-50 text-indigo-600'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                         }`}
                                 >
                                     <item.icon className="w-5 h-5" />
