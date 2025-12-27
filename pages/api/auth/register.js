@@ -6,6 +6,7 @@ import { auth, db } from '../../../lib/firebase-admin';
 import { validateData, registerSchema } from '../../../lib/validators';
 import logger from '../../../lib/logger';
 import { applyRateLimit, authLimiter } from '../../../lib/rate-limiter';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     const startTime = Date.now();
@@ -155,6 +156,20 @@ export default async function handler(req, res) {
             timestamp: new Date(),
             expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
         });
+
+        // Log the user creation action
+        await logAction(
+            'CREATE',
+            userId, // The newly created user
+            'USER',
+            userId,
+            { before: null, after: userData },
+            {
+                ipAddress: getIpAddress(req),
+                userAgent: getUserAgent(req),
+                extra: { createdBy: 'self-registration' }
+            }
+        );
 
         const duration = Date.now() - startTime;
         logger.info('User registered successfully', { userId, email, role, duration });

@@ -3,6 +3,7 @@
 
 import { db, auth } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
                     error: { code: 'FORBIDDEN', message: 'Super admin access required' }
                 });
             }
-            return await deleteUser(req, res, userId);
+            return await deleteUser(req, res, userId, user);
         } else {
             return res.status(405).json({
                 success: false,
@@ -91,11 +92,30 @@ async function updateUser(req, res, user, userId) {
         }
     }
 
+    // Capture before state for audit log
+    const beforeState = userDoc.data();
+
     delete updateData.userId;
     delete updateData.createdAt;
     delete updateData.createdBy;
 
     await db.collection('users').doc(userId).update(updateData);
+
+    const updatedUser = await db.collection('users').doc(userId).get();
+    const afterState = updatedUser.data();
+
+    // Log the update action
+    await logAction(
+        'UPDATE',
+        authUser.userId,
+        'USER',
+        userId,
+        { before: beforeState, after: afterState },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req)
+        }
+    );
 
     return res.status(200).json({
         success: true,
@@ -103,7 +123,7 @@ async function updateUser(req, res, user, userId) {
     });
 }
 
-async function deleteUser(req, res, userId) {
+async function deleteUser(req, res, userId, authUser) {
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
         return res.status(404).json({
@@ -111,6 +131,9 @@ async function deleteUser(req, res, userId) {
             error: { code: 'NOT_FOUND', message: 'User not found' }
         });
     }
+
+    // Capture state before deletion for audit log
+    const beforeState = userDoc.data();
 
     // NEW: Prevent Super Admin deletion
     if (userDoc.data().role === 'super_admin') {
@@ -132,6 +155,19 @@ async function deleteUser(req, res, userId) {
 
     // Delete from Firestore
     await db.collection('users').doc(userId).delete();
+
+    // Log the delete action
+    await logAction(
+        'DELETE',
+        authUser.userId,
+        'USER',
+        userId,
+        { before: beforeState, after: null },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req)
+        }
+    );
 
     return res.status(200).json({
         success: true,

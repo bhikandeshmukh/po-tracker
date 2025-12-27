@@ -34,6 +34,7 @@ const navigation = [
     { name: 'Transporters', href: '/transporters', icon: Users },
     { name: 'Activity Log', href: '/activity', icon: Activity },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Audit Logs', href: '/audit-logs', icon: Settings, adminOnly: true },
     { name: 'Users', href: '/users', icon: Users },
 ];
 
@@ -121,6 +122,11 @@ export default function Layout({ children }) {
                     {/* Navigation */}
                     <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                         {navigation.map((item) => {
+                            // Hide admin-only items for non-admins
+                            if (item.adminOnly && user?.role !== 'admin' && user?.role !== 'super_admin') {
+                                return null;
+                            }
+
                             const isActive = router.pathname === item.href;
                             return (
                                 <Link
