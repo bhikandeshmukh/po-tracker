@@ -7,11 +7,11 @@ import apiClient from '../../lib/api-client';
 const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">{payload[0].payload.month}</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">Order Qty: {payload[0]?.value || 0}</p>
-                <p className="text-sm text-green-600 dark:text-green-400">Shipped Qty: {payload[1]?.value || 0}</p>
-                <p className="text-sm text-purple-600 dark:text-purple-400">Delivered Qty: {payload[2]?.value || 0}</p>
+            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                <p className="text-sm font-semibold text-gray-900 mb-2">{payload[0].payload.month}</p>
+                <p className="text-sm text-blue-600">Order Qty: {payload[0]?.value || 0}</p>
+                <p className="text-sm text-green-600">Shipped Qty: {payload[1]?.value || 0}</p>
+                <p className="text-sm text-purple-600">Delivered Qty: {payload[2]?.value || 0}</p>
             </div>
         );
     }

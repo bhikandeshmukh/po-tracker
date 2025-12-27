@@ -1,7 +1,7 @@
 // components/Layout/Layout.js
 // Main layout with sidebar and header
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth-client';
@@ -22,9 +22,7 @@ import {
     X,
     Bell,
     Search,
-    Activity,
-    Sun,
-    Moon
+    Activity
 } from 'lucide-react';
 
 const navigation = [
@@ -47,31 +45,6 @@ export default function Layout({ children }) {
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [searching, setSearching] = useState(false);
-    const [darkMode, setDarkMode] = useState(false);
-
-    useEffect(() => {
-        // Check initial theme
-        const isDark = localStorage.getItem('theme') === 'dark' ||
-            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setDarkMode(isDark);
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    }, []);
-
-    const toggleDarkMode = () => {
-        const newDark = !darkMode;
-        setDarkMode(newDark);
-        if (newDark) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    };
 
     const handleLogout = async () => {
         await logout();
@@ -114,7 +87,7 @@ export default function Layout({ children }) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        <div className="min-h-screen bg-gray-50">
             {/* Mobile sidebar backdrop */}
             {sidebarOpen && (
                 <div
@@ -125,7 +98,7 @@ export default function Layout({ children }) {
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
                 <div className="flex flex-col h-full">
@@ -194,7 +167,7 @@ export default function Layout({ children }) {
             {/* Main content */}
             <div className="lg:pl-64">
                 {/* Header */}
-                <header className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
                     <div className="flex items-center justify-between h-16 px-6">
                         <button
                             onClick={() => setSidebarOpen(true)}
@@ -260,18 +233,11 @@ export default function Layout({ children }) {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <button
-                                onClick={toggleDarkMode}
-                                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                            >
-                                {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-                            </button>
-                            <button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">
+                            <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
                                 <Bell className="w-6 h-6" />
                                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                             </button>
-                            <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">
+                            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
                                 <Settings className="w-6 h-6" />
                             </button>
                         </div>
