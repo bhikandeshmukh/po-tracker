@@ -22,7 +22,7 @@ export default async function handler(req, res) {
             return await updateUser(req, res, user, userId);
         } else if (req.method === 'DELETE') {
             const hasPermission = await requireRole(user, ['super_admin']);
-            
+
             if (!hasPermission) {
                 return res.status(403).json({
                     success: false,
@@ -79,6 +79,18 @@ async function updateUser(req, res, user, userId) {
     }
 
     const updateData = { ...req.body, updatedAt: new Date() };
+
+    // NEW: Check for single Super Admin restriction on update
+    if (updateData.role === 'super_admin' && userDoc.data().role !== 'super_admin') {
+        const superAdminQuery = await db.collection('users').where('role', '==', 'super_admin').limit(1).get();
+        if (!superAdminQuery.empty) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'BAD_REQUEST', message: 'Only one Super Admin is allowed in the system.' }
+            });
+        }
+    }
+
     delete updateData.userId;
     delete updateData.createdAt;
     delete updateData.createdBy;
@@ -97,6 +109,14 @@ async function deleteUser(req, res, userId) {
         return res.status(404).json({
             success: false,
             error: { code: 'NOT_FOUND', message: 'User not found' }
+        });
+    }
+
+    // NEW: Prevent Super Admin deletion
+    if (userDoc.data().role === 'super_admin') {
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Super admin users cannot be deleted' }
         });
     }
 

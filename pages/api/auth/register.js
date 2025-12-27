@@ -70,6 +70,20 @@ export default async function handler(req, res) {
             });
         }
 
+        // NEW: Check for existing Super Admin if registering as one
+        if (role === 'super_admin') {
+            const superAdminQuery = await db.collection('users').where('role', '==', 'super_admin').limit(1).get();
+            if (!superAdminQuery.empty) {
+                return res.status(400).json({
+                    success: false,
+                    error: {
+                        code: 'SUPER_ADMIN_EXISTS',
+                        message: 'Only one Super Admin is allowed in the system.'
+                    }
+                });
+            }
+        }
+
         // Create Firebase Auth user
         const userRecord = await auth.createUser({
             uid: userId,

@@ -6,12 +6,12 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import { useAuth } from '../../lib/auth-client';
-import { 
-    Users, 
-    Plus, 
-    Search, 
-    Edit, 
-    Trash2, 
+import {
+    Users,
+    Plus,
+    Search,
+    Edit,
+    Trash2,
     Shield,
     UserCheck,
     UserX,
@@ -242,11 +242,10 @@ export default function UsersManagement() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${
-                                                        user.isActive
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
+                                                    <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${user.isActive
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-red-100 text-red-800'
+                                                        }`}>
                                                         {user.isActive ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
                                                         <span>{user.isActive ? 'Active' : 'Inactive'}</span>
                                                     </span>
@@ -266,7 +265,7 @@ export default function UsersManagement() {
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
-                                                        {user.userId !== currentUser?.uid && (
+                                                        {user.userId !== currentUser?.uid && user.role !== 'super_admin' && (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedUser(user);
@@ -464,7 +463,9 @@ function CreateUserModal({ onClose, onSuccess }) {
                                 <option value="user">User</option>
                                 <option value="manager">Manager</option>
                                 <option value="admin">Admin</option>
-                                <option value="super_admin">Super Admin</option>
+                                {!users.some(u => u.role === 'super_admin') && (
+                                    <option value="super_admin">Super Admin</option>
+                                )}
                             </select>
                         </div>
 

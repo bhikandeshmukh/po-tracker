@@ -22,6 +22,7 @@ function EditUser() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [otherSuperAdminExists, setOtherSuperAdminExists] = useState(false);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -34,23 +35,37 @@ function EditUser() {
     useEffect(() => {
         let isMounted = true;
 
-        const fetchUser = async () => {
+        const fetchData = async () => {
             try {
                 if (isMounted) setLoading(true);
-                const response = await apiClient.getUserById(userId);
-                if (isMounted && response.success) {
-                    const user = response.data;
-                    setFormData({
-                        firstName: user.firstName || '',
-                        lastName: user.lastName || '',
-                        email: user.email || '',
-                        phone: user.phone || '',
-                        role: user.role || 'user',
-                        isActive: user.isActive !== false,
-                    });
+
+                // Fetch current user details
+                const userResponse = await apiClient.getUserById(userId);
+
+                // Fetch all users to check if another super_admin exists
+                const usersResponse = await apiClient.getUsers({ limit: 100 });
+
+                if (isMounted) {
+                    if (userResponse.success) {
+                        const user = userResponse.data;
+                        setFormData({
+                            firstName: user.firstName || '',
+                            lastName: user.lastName || '',
+                            email: user.email || '',
+                            phone: user.phone || '',
+                            role: user.role || 'user',
+                            isActive: user.isActive !== false,
+                        });
+
+                        // Check if another super_admin exists
+                        if (usersResponse.success) {
+                            const others = usersResponse.data.filter(u => u.userId !== userId);
+                            setOtherSuperAdminExists(others.some(u => u.role === 'super_admin'));
+                        }
+                    }
                 }
             } catch (err) {
-                if (isMounted) setError('Failed to load user');
+                if (isMounted) setError('Failed to load user data');
                 console.error(err);
             } finally {
                 if (isMounted) setLoading(false);
@@ -58,7 +73,7 @@ function EditUser() {
         };
 
         if (userId) {
-            fetchUser();
+            fetchData();
         }
 
         return () => {
@@ -228,25 +243,35 @@ function EditUser() {
                                 Role
                             </label>
                             <div className="space-y-3">
-                                {roles.map((role) => (
-                                    <label
-                                        key={role.value}
-                                        className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="role"
-                                            value={role.value}
-                                            checked={formData.role === role.value}
-                                            onChange={handleChange}
-                                            className="mt-1"
-                                        />
-                                        <div className="flex-1">
-                                            <div className="font-medium text-gray-900">{role.label}</div>
-                                            <div className="text-sm text-gray-500">{role.description}</div>
-                                        </div>
-                                    </label>
-                                ))}
+                                {roles.map((role) => {
+                                    const isDisabled = role.value === 'super_admin' && otherSuperAdminExists;
+                                    return (
+                                        <label
+                                            key={role.value}
+                                            className={`flex items-start space-x-3 p-3 border border-gray-200 rounded-lg transition ${isDisabled
+                                                    ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                                                    : 'hover:bg-gray-50 cursor-pointer'
+                                                }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="role"
+                                                value={role.value}
+                                                checked={formData.role === role.value}
+                                                onChange={handleChange}
+                                                disabled={isDisabled}
+                                                className="mt-1"
+                                            />
+                                            <div className="flex-1">
+                                                <div className="font-medium text-gray-900">
+                                                    {role.label}
+                                                    {isDisabled && <span className="ml-2 text-xs text-red-500 font-normal">(Already exists)</span>}
+                                                </div>
+                                                <div className="text-sm text-gray-500">{role.description}</div>
+                                            </div>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
 

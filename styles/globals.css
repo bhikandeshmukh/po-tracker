@@ -22,6 +22,12 @@ html {
 body {
     background-color: #f9fafb;
     color: #111827;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
 }
 
 /* Custom scrollbar */
