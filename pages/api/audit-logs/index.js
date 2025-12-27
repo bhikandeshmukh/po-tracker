@@ -1,27 +1,36 @@
 // pages/api/audit-logs/index.js
 // API route for audit logs
 
-import { authMiddleware } from '../../../lib/auth-middleware';
+import { verifyAuth } from '../../../lib/auth-middleware';
 import { getAuditLogs, getAuditStats } from '../../../lib/audit-logger';
 
-async function handler(req, res) {
-    // Only allow GET requests
-    if (req.method !== 'GET') {
-        return res.status(405).json({
-            success: false,
-            error: { code: 'METHOD_NOT_ALLOWED', message: 'Only GET requests are allowed' }
-        });
-    }
-
-    // Check if user is admin or super_admin
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Only admins can view audit logs' }
-        });
-    }
-
+export default async function handler(req, res) {
     try {
+        // Verify authentication
+        const user = await verifyAuth(req);
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+            });
+        }
+
+        // Only allow GET requests
+        if (req.method !== 'GET') {
+            return res.status(405).json({
+                success: false,
+                error: { code: 'METHOD_NOT_ALLOWED', message: 'Only GET requests are allowed' }
+            });
+        }
+
+        // Check if user is admin or super_admin
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            return res.status(403).json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Only admins can view audit logs' }
+            });
+        }
+
         // Check if stats are requested
         if (req.query.stats === 'true') {
             const stats = await getAuditStats();
@@ -57,5 +66,3 @@ async function handler(req, res) {
         });
     }
 }
-
-export default authMiddleware(handler);
