@@ -6,6 +6,7 @@ import { db } from '../../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
 import { validateStatusTransition } from '../../../../lib/validation-schemas';
 import { addPOActivity } from '../../../../lib/po-helpers';
+import { incrementMetric } from '../../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
         const result = await db.runTransaction(async (transaction) => {
             const poRef = db.collection('purchaseOrders').doc(poId);
             const poDoc = await transaction.get(poRef);
-            
+
             if (!poDoc.exists) {
                 throw new Error('PO_NOT_FOUND');
             }
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
 
             // FIXED: Validate status transition
             const transitionValidation = validateStatusTransition(currentStatus, 'approved');
-            
+
             if (!transitionValidation.valid) {
                 throw new Error(`INVALID_TRANSITION:${transitionValidation.error}`);
             }
@@ -76,11 +77,19 @@ export default async function handler(req, res) {
                 oldValue: result.currentStatus,
                 newValue: 'approved'
             }],
-            metadata: { 
+            metadata: {
                 notes: notes || '',
                 approvalDate: new Date().toISOString()
             }
         });
+
+        // Sync metrics (O(1) update)
+        if (result.currentStatus === 'draft' || result.currentStatus === 'pending') {
+            await Promise.all([
+                incrementMetric('pendingPOs', -1),
+                incrementMetric('activePOs', 1)
+            ]);
+        }
 
         // Create audit log
         await db.collection('auditLogs').doc().set({
@@ -119,9 +128,9 @@ export default async function handler(req, res) {
             const errorMessage = error.message.replace('INVALID_TRANSITION:', '');
             return res.status(400).json({
                 success: false,
-                error: { 
-                    code: 'INVALID_STATUS_TRANSITION', 
-                    message: errorMessage 
+                error: {
+                    code: 'INVALID_STATUS_TRANSITION',
+                    message: errorMessage
                 }
             });
         }
@@ -131,7 +140,7 @@ export default async function handler(req, res) {
             poId: req.query.poId,
             user: user?.uid
         });
-        
+
         return res.status(500).json({
             success: false,
             error: { code: 'SERVER_ERROR', message: 'Internal server error' }

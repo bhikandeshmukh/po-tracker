@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import { ArrowLeft, Truck, MapPin, Calendar, Package, Edit } from 'lucide-react';
+import DeliveryConfirmModal from '../../components/Common/DeliveryConfirmModal';
 
 export default function AppointmentDetail() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function AppointmentDetail() {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [showAllItems, setShowAllItems] = useState(false);
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
 
     const fetchAppointment = async () => {
         try {
@@ -22,7 +24,7 @@ export default function AppointmentDetail() {
             if (response.success) {
                 const appointmentData = response.data;
                 setAppointment(appointmentData);
-                
+
                 // Fetch PO data to get warehouse info
                 if (appointmentData.poId) {
                     try {
@@ -30,13 +32,13 @@ export default function AppointmentDetail() {
                         if (poResponse.success) {
                             appointmentData.vendorWarehouseName = poResponse.data.vendorWarehouseName;
                             appointmentData.vendorWarehouseId = poResponse.data.vendorWarehouseId;
-                            setAppointment({...appointmentData});
+                            setAppointment({ ...appointmentData });
                         }
                     } catch (err) {
                         console.error('Failed to fetch PO:', err);
                     }
                 }
-                
+
                 // Fetch shipment data to get all details
                 if (appointmentData.shipmentId) {
                     try {
@@ -77,8 +79,13 @@ export default function AppointmentDetail() {
     }, [appointmentId]);
 
     const handleStatusUpdate = async (newStatus) => {
+        if (newStatus === 'delivered') {
+            setShowDeliveryModal(true);
+            return;
+        }
+
         if (!confirm(`Update status to ${newStatus}?`)) return;
-        
+
         setUpdating(true);
         try {
             // Update shipment status (which will sync to appointment)
@@ -96,6 +103,37 @@ export default function AppointmentDetail() {
             }
         } catch (error) {
             console.error('Failed to update status:', error);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleDeliveryConfirm = async (deliveryData) => {
+        setUpdating(true);
+        try {
+            // Update shipment with delivery details (which syncs to appointment)
+            const updatePayload = {
+                status: 'delivered',
+                ...deliveryData
+            };
+
+            if (appointment.shipmentId) {
+                const response = await apiClient.updateShipment(appointment.shipmentId, updatePayload);
+                if (response?.success) {
+                    await fetchAppointment();
+                    setShowDeliveryModal(false);
+                }
+            } else {
+                // Fallback for standalone appointments
+                const response = await apiClient.updateAppointment(appointmentId, updatePayload);
+                if (response?.success) {
+                    await fetchAppointment();
+                    setShowDeliveryModal(false);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to confirm delivery:', error);
+            alert('Failed to update delivery status. Please try again.');
         } finally {
             setUpdating(false);
         }
@@ -193,7 +231,7 @@ export default function AppointmentDetail() {
                             <div>
                                 <p className="text-sm text-gray-500">Scheduled Date</p>
                                 <p className="font-medium">
-                                    {data.scheduledDate 
+                                    {data.scheduledDate
                                         ? new Date(data.scheduledDate).toLocaleDateString('en-IN', {
                                             day: '2-digit',
                                             month: '2-digit',
@@ -257,17 +295,16 @@ export default function AppointmentDetail() {
                 {/* Appointment Progress - Same as Shipment */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6">Shipment Progress</h3>
-                    
+
                     {/* Progress Bar */}
                     <div className="relative mb-8">
                         <div className="flex items-center justify-between">
                             {/* Created */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                    ['created', 'pending', 'in_transit', 'delivered', 'scheduled', 'confirmed', 'completed'].includes(data.status)
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${['created', 'pending', 'in_transit', 'delivered', 'scheduled', 'confirmed', 'completed'].includes(data.status)
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-400'
-                                }`}>
+                                    }`}>
                                     <Package className="w-6 h-6" />
                                 </div>
                                 <p className="text-xs font-medium mt-2 text-center">Created</p>
@@ -277,19 +314,17 @@ export default function AppointmentDetail() {
                             </div>
 
                             {/* Line 1 */}
-                            <div className={`flex-1 h-1 -mx-2 ${
-                                ['pending', 'in_transit', 'delivered', 'confirmed', 'completed'].includes(data.status)
+                            <div className={`flex-1 h-1 -mx-2 ${['pending', 'in_transit', 'delivered', 'confirmed', 'completed'].includes(data.status)
                                     ? 'bg-indigo-600'
                                     : 'bg-gray-200'
-                            }`}></div>
+                                }`}></div>
 
                             {/* Pending */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                    ['pending', 'in_transit', 'delivered', 'confirmed', 'completed'].includes(data.status)
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${['pending', 'in_transit', 'delivered', 'confirmed', 'completed'].includes(data.status)
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-400'
-                                }`}>
+                                    }`}>
                                     <Truck className="w-6 h-6" />
                                 </div>
                                 <p className="text-xs font-medium mt-2 text-center">Pending</p>
@@ -299,19 +334,17 @@ export default function AppointmentDetail() {
                             </div>
 
                             {/* Line 2 */}
-                            <div className={`flex-1 h-1 -mx-2 ${
-                                ['in_transit', 'delivered', 'completed'].includes(data.status)
+                            <div className={`flex-1 h-1 -mx-2 ${['in_transit', 'delivered', 'completed'].includes(data.status)
                                     ? 'bg-indigo-600'
                                     : 'bg-gray-200'
-                            }`}></div>
+                                }`}></div>
 
                             {/* In Transit */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                    ['in_transit', 'delivered', 'completed'].includes(data.status)
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${['in_transit', 'delivered', 'completed'].includes(data.status)
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-400'
-                                }`}>
+                                    }`}>
                                     <Truck className="w-6 h-6" />
                                 </div>
                                 <p className="text-xs font-medium mt-2 text-center">In Transit</p>
@@ -321,19 +354,17 @@ export default function AppointmentDetail() {
                             </div>
 
                             {/* Line 3 */}
-                            <div className={`flex-1 h-1 -mx-2 ${
-                                ['delivered', 'completed'].includes(data.status)
+                            <div className={`flex-1 h-1 -mx-2 ${['delivered', 'completed'].includes(data.status)
                                     ? 'bg-indigo-600'
                                     : 'bg-gray-200'
-                            }`}></div>
+                                }`}></div>
 
                             {/* Delivered */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                    ['delivered', 'completed'].includes(data.status)
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${['delivered', 'completed'].includes(data.status)
                                         ? 'bg-green-600 text-white'
                                         : 'bg-gray-200 text-gray-400'
-                                }`}>
+                                    }`}>
                                     <MapPin className="w-6 h-6" />
                                 </div>
                                 <p className="text-xs font-medium mt-2 text-center">Delivered</p>
@@ -348,47 +379,43 @@ export default function AppointmentDetail() {
                     <div className="border-t pt-6">
                         <h4 className="text-sm font-semibold text-gray-900 mb-3">Update Status</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <button 
-                                onClick={() => handleStatusUpdate('pending')} 
+                            <button
+                                onClick={() => handleStatusUpdate('pending')}
                                 disabled={updating || data.status === 'pending'}
-                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    data.status === 'pending'
+                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${data.status === 'pending'
                                         ? 'bg-yellow-600 text-white'
                                         : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
-                                }`}
+                                    }`}
                             >
                                 Pending
                             </button>
-                            <button 
-                                onClick={() => handleStatusUpdate('in_transit')} 
+                            <button
+                                onClick={() => handleStatusUpdate('in_transit')}
                                 disabled={updating || data.status === 'in_transit'}
-                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    data.status === 'in_transit'
+                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${data.status === 'in_transit'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                                }`}
+                                    }`}
                             >
                                 In Transit
                             </button>
-                            <button 
-                                onClick={() => handleStatusUpdate('delivered')} 
+                            <button
+                                onClick={() => handleStatusUpdate('delivered')}
                                 disabled={updating || ['delivered', 'completed'].includes(data.status)}
-                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    ['delivered', 'completed'].includes(data.status)
+                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${['delivered', 'completed'].includes(data.status)
                                         ? 'bg-green-600 text-white'
                                         : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                                }`}
+                                    }`}
                             >
                                 Delivered
                             </button>
-                            <button 
-                                onClick={() => handleStatusUpdate('cancelled')} 
+                            <button
+                                onClick={() => handleStatusUpdate('cancelled')}
                                 disabled={updating || data.status === 'cancelled'}
-                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    data.status === 'cancelled'
+                                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${data.status === 'cancelled'
                                         ? 'bg-red-600 text-white'
                                         : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                                }`}
+                                    }`}
                             >
                                 Cancelled
                             </button>
@@ -438,7 +465,7 @@ export default function AppointmentDetail() {
                             )}
                         </>
                     )}
-                    
+
                     {/* Totals */}
                     {items.length > 0 && (
                         <div className="mt-6 pt-6 border-t border-gray-200">
@@ -452,6 +479,17 @@ export default function AppointmentDetail() {
                     )}
                 </div>
             </div>
+
+            {appointment && (
+                <DeliveryConfirmModal
+                    isOpen={showDeliveryModal}
+                    onClose={() => setShowDeliveryModal(false)}
+                    onConfirm={handleDeliveryConfirm}
+                    totalQuantity={data.totalQuantity || 0}
+                    itemName={data.appointmentNumber || 'Items'}
+                    isLoading={updating}
+                />
+            )}
         </Layout>
     );
 }

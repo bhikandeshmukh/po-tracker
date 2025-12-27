@@ -6,6 +6,7 @@ import { db } from '../../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
 import { validateStatusTransition, sanitizeInput } from '../../../../lib/validation-schemas';
 import { addPOActivity } from '../../../../lib/po-helpers';
+import { incrementMetric } from '../../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -39,9 +40,9 @@ export default async function handler(req, res) {
         if (!cancellationReason.trim()) {
             return res.status(400).json({
                 success: false,
-                error: { 
-                    code: 'VALIDATION_ERROR', 
-                    message: 'Cancellation reason is required' 
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Cancellation reason is required'
                 }
             });
         }
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
         const result = await db.runTransaction(async (transaction) => {
             const poRef = db.collection('purchaseOrders').doc(poId);
             const poDoc = await transaction.get(poRef);
-            
+
             if (!poDoc.exists) {
                 throw new Error('PO_NOT_FOUND');
             }
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
 
             // FIXED: Validate status transition
             const transitionValidation = validateStatusTransition(currentStatus, 'cancelled');
-            
+
             if (!transitionValidation.valid) {
                 throw new Error(`INVALID_TRANSITION:${transitionValidation.error}`);
             }
@@ -80,8 +81,28 @@ export default async function handler(req, res) {
                 updatedAt: new Date()
             });
 
-            return { currentStatus, poNumber: poData.poNumber };
+            return {
+                currentStatus,
+                poNumber: poData.poNumber,
+                totalQuantity: poData.totalQuantity || 0,
+                shippedQuantity: poData.shippedQuantity || 0,
+                pendingQuantity: poData.pendingQuantity || 0
+            };
         });
+
+        // Sync metrics (O(1) update)
+        const metricsToUpdate = [
+            incrementMetric('totalOrderQty', -result.totalQuantity),
+            incrementMetric('totalShippedQty', -result.shippedQuantity),
+            incrementMetric('totalPendingQty', -result.pendingQuantity)
+        ];
+
+        // Status counts
+        const oldStatus = result.currentStatus;
+        if (['approved', 'partial_sent'].includes(oldStatus)) metricsToUpdate.push(incrementMetric('activePOs', -1));
+        else if (['pending', 'draft'].includes(oldStatus)) metricsToUpdate.push(incrementMetric('pendingPOs', -1));
+
+        await Promise.all(metricsToUpdate);
 
         // FIXED: Add activity to subcollection (no array growth issue)
         await addPOActivity(poId, {
@@ -138,9 +159,9 @@ export default async function handler(req, res) {
         if (error.message === 'ALREADY_CANCELLED') {
             return res.status(400).json({
                 success: false,
-                error: { 
-                    code: 'ALREADY_CANCELLED', 
-                    message: 'Purchase order is already cancelled' 
+                error: {
+                    code: 'ALREADY_CANCELLED',
+                    message: 'Purchase order is already cancelled'
                 }
             });
         }
@@ -149,9 +170,9 @@ export default async function handler(req, res) {
             const errorMessage = error.message.replace('INVALID_TRANSITION:', '');
             return res.status(400).json({
                 success: false,
-                error: { 
-                    code: 'INVALID_STATUS_TRANSITION', 
-                    message: errorMessage 
+                error: {
+                    code: 'INVALID_STATUS_TRANSITION',
+                    message: errorMessage
                 }
             });
         }
@@ -161,7 +182,7 @@ export default async function handler(req, res) {
             poId: req.query.poId,
             user: user?.uid
         });
-        
+
         return res.status(500).json({
             success: false,
             error: { code: 'SERVER_ERROR', message: 'Internal server error' }

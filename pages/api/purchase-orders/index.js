@@ -5,15 +5,16 @@
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth } from '../../../lib/auth-middleware';
 import { validatePurchaseOrder, sanitizeInput } from '../../../lib/validation-schemas';
-import { 
-    createPOWithTransaction, 
-    validateVendorAndWarehouse 
+import {
+    createPOWithTransaction,
+    validateVendorAndWarehouse
 } from '../../../lib/po-helpers';
 import { standardRateLimiter, createOperationLimiter } from '../../../lib/rate-limiter';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     let user = null;
-    
+
     try {
         // Verify authentication
         user = await verifyAuth(req);
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
             stack: error.stack,
             user: user?.uid
         });
-        
+
         return res.status(500).json({
             success: false,
             error: {
@@ -93,7 +94,7 @@ async function getPurchaseOrders(req, res, user) {
 
     try {
         const limitNum = Math.min(parseInt(limit, 10) || 10, 100); // Max 100 per page
-        
+
         // Base query - always order by createdAt for consistent pagination
         let query = db.collection('purchaseOrders')
             .orderBy('createdAt', 'desc');
@@ -101,11 +102,11 @@ async function getPurchaseOrders(req, res, user) {
         // Apply single filter at a time to avoid composite index requirement
         // For multiple filters, we'll filter in memory
         const filters = [];
-        
+
         if (status) {
             filters.push({ field: 'status', value: status });
         }
-        
+
         if (vendorId) {
             filters.push({ field: 'vendorId', value: vendorId });
         }
@@ -129,7 +130,7 @@ async function getPurchaseOrders(req, res, user) {
         query = query.limit(fetchLimit);
 
         const snapshot = await query.get();
-        
+
         let purchaseOrders = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -156,14 +157,14 @@ async function getPurchaseOrders(req, res, user) {
         // Apply date range filters in memory
         if (startDate) {
             const start = new Date(startDate);
-            purchaseOrders = purchaseOrders.filter(po => 
+            purchaseOrders = purchaseOrders.filter(po =>
                 new Date(po.poDate) >= start
             );
         }
 
         if (endDate) {
             const end = new Date(endDate);
-            purchaseOrders = purchaseOrders.filter(po => 
+            purchaseOrders = purchaseOrders.filter(po =>
                 new Date(po.poDate) <= end
             );
         }
@@ -180,8 +181,8 @@ async function getPurchaseOrders(req, res, user) {
         // Limit results
         const hasMore = purchaseOrders.length > limitNum;
         const results = purchaseOrders.slice(0, limitNum);
-        const nextCursor = hasMore && results.length > 0 
-            ? results[results.length - 1].id 
+        const nextCursor = hasMore && results.length > 0
+            ? results[results.length - 1].id
             : null;
 
         return res.status(200).json({
@@ -207,15 +208,15 @@ async function createPurchaseOrder(req, res, user) {
         console.log('Creating PO - Request body keys:', Object.keys(req.body));
         console.log('Creating PO - Items count:', req.body.items?.length);
         console.log('Creating PO - Items is array?', Array.isArray(req.body.items));
-        
+
         // Sanitize and validate input (FIXED: XSS protection)
         const validation = validatePurchaseOrder(req.body, false);
-        
+
         console.log('Validation result:', validation.valid ? 'VALID' : 'INVALID');
         if (!validation.valid) {
             console.error('Validation failed:', validation.details);
         }
-        
+
         if (!validation.valid) {
             return res.status(400).json({
                 success: false,
@@ -241,12 +242,12 @@ async function createPurchaseOrder(req, res, user) {
         // Validate vendor and warehouse exist (FIXED: Proper validation)
         console.log('Validating vendor:', vendorId, 'warehouse:', vendorWarehouseId);
         const vendorValidation = await validateVendorAndWarehouse(vendorId, vendorWarehouseId);
-        
+
         console.log('Vendor validation result:', vendorValidation.valid ? 'VALID' : 'INVALID');
         if (!vendorValidation.valid) {
             console.error('Vendor validation failed:', vendorValidation.error);
         }
-        
+
         if (!vendorValidation.valid) {
             return res.status(404).json({
                 success: false,
@@ -278,6 +279,15 @@ async function createPurchaseOrder(req, res, user) {
         // Create PO with transaction (FIXED: Atomic operation, no race condition)
         console.log('Creating PO with transaction...');
         const result = await createPOWithTransaction(poData, items, user);
+
+        // Sync metrics (O(1) update)
+        await Promise.all([
+            incrementMetric('totalPOs', 1),
+            incrementMetric('pendingPOs', 1),
+            incrementMetric('totalOrderQty', result.totalQuantity || 0),
+            incrementMetric('totalPendingQty', result.totalQuantity || 0)
+        ]);
+
         console.log('PO created successfully:', result.poId);
 
         return res.status(201).json({

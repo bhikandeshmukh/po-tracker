@@ -40,26 +40,26 @@ export default function PODetail() {
             setLoading(true);
             // API returns items in the PO detail response
             const poResponse = await apiClient.getPOById(poId);
-            
+
             if (poResponse.success) {
                 const poData = poResponse.data;
-                
+
                 // Auto-fix: Update PO status based on shipped quantity
                 const totalQty = poData.totalQuantity || 0;
                 const shippedQty = poData.shippedQuantity || 0;
                 const currentStatus = poData.status;
-                
+
                 if (totalQty > 0 && shippedQty > 0) {
                     let correctStatus = currentStatus;
                     const expectedDeliveryDate = poData.expectedDeliveryDate ? new Date(poData.expectedDeliveryDate) : null;
                     const isExpired = expectedDeliveryDate && new Date() > expectedDeliveryDate;
-                    
+
                     if (shippedQty >= totalQty) {
                         correctStatus = 'completed';
                     } else if (shippedQty > 0) {
                         correctStatus = isExpired ? 'partial_completed' : 'partial_sent';
                     }
-                    
+
                     // Update if status is incorrect
                     if (correctStatus !== currentStatus && ['approved', 'partial_sent', 'partial_completed'].includes(currentStatus)) {
                         console.log(`Auto-fixing PO status: ${currentStatus} → ${correctStatus}`);
@@ -71,13 +71,13 @@ export default function PODetail() {
                         }
                     }
                 }
-                
+
                 setPO(poData);
                 // Items are included in the PO response
                 if (poData.items) {
                     setItems(poData.items);
                 }
-                
+
                 // Auto-sync: Update PO items shipped quantity from shipments
                 if (poData.shippedQuantity > 0 && poData.items) {
                     const needsSync = poData.items.some(item => (item.shippedQuantity || 0) === 0);
@@ -96,7 +96,7 @@ export default function PODetail() {
                     }
                 }
             }
-            
+
             // Fetch shipments for this PO
             await fetchShipments();
         } catch (error) {
@@ -105,13 +105,13 @@ export default function PODetail() {
             setLoading(false);
         }
     };
-    
+
     const fetchShipments = async () => {
         try {
             const response = await apiClient.getShipments({ poId });
             if (response.success) {
                 const shipmentsData = response.data || [];
-                
+
                 // Auto-sync: Create missing appointments for shipments
                 for (const shipment of shipmentsData) {
                     try {
@@ -131,7 +131,7 @@ export default function PODetail() {
                         }
                     }
                 }
-                
+
                 // Fetch appointment data for each shipment to get LR docket number
                 const shipmentsWithAppointments = await Promise.all(
                     shipmentsData.map(async (shipment) => {
@@ -152,7 +152,7 @@ export default function PODetail() {
                         return shipment;
                     })
                 );
-                
+
                 setShipments(shipmentsWithAppointments);
             }
         } catch (error) {
@@ -194,7 +194,7 @@ export default function PODetail() {
             setCommentLoading(false);
         }
     };
-    
+
     // Helper to convert Excel date to ISO
     const excelDateToISO = (excelDate) => {
         if (!excelDate) return null;
@@ -205,7 +205,7 @@ export default function PODetail() {
         const date = new Date((excelDate - 25569) * 86400 * 1000);
         return date.toISOString();
     };
-    
+
     const handleShipmentImport = async (data) => {
         try {
             // Keep data as-is from Excel - no modifications
@@ -228,14 +228,14 @@ export default function PODetail() {
             });
 
             if (validationErrors.length > 0) {
-                alert('Validation errors:\n' + validationErrors.slice(0, 5).join('\n') + 
-                      (validationErrors.length > 5 ? `\n...and ${validationErrors.length - 5} more errors` : ''));
+                alert('Validation errors:\n' + validationErrors.slice(0, 5).join('\n') +
+                    (validationErrors.length > 5 ? `\n...and ${validationErrors.length - 5} more errors` : ''));
                 return { success: false, error: validationErrors.join('; ') };
             }
 
             // Group by shipment number
             const shipmentGroups = {};
-            
+
             cleanedData.forEach(row => {
                 if (!shipmentGroups[row.shipmentNumber]) {
                     shipmentGroups[row.shipmentNumber] = {
@@ -249,20 +249,20 @@ export default function PODetail() {
                         items: []
                     };
                 }
-                
+
                 shipmentGroups[row.shipmentNumber].items.push({
                     sentQty: row.sentQty
                 });
             });
-            
+
             // Create shipments (API will handle updating PO sent qty)
             const results = [];
             for (const shipment of Object.values(shipmentGroups)) {
                 try {
                     console.log('Creating shipment:', shipment);
-                    
+
                     let actualPoId, poData, poItems;
-                    
+
                     // Check if this shipment is for the current PO
                     if (po && po.poNumber === shipment.poNumber) {
                         // Use current PO data
@@ -276,37 +276,37 @@ export default function PODetail() {
                         if (!posResponse.success) {
                             throw new Error('Failed to fetch POs');
                         }
-                        
+
                         const matchingPO = posResponse.data.find(p => p.poNumber === shipment.poNumber);
                         if (!matchingPO) {
                             throw new Error(`PO ${shipment.poNumber} not found`);
                         }
-                        
+
                         actualPoId = matchingPO.id || matchingPO.poId;
-                        
+
                         // Get PO details and items using the actual poId
                         const [poResponse, poItemsResponse] = await Promise.all([
                             apiClient.getPOById(actualPoId),
                             apiClient.getPOItems(actualPoId)
                         ]);
-                        
+
                         if (!poResponse.success) {
                             throw new Error('PO not found');
                         }
-                        
+
                         poData = poResponse.data;
                         poItems = poItemsResponse.success ? poItemsResponse.data : [];
                     }
-                    
+
                     // Create a map of PO items for quick lookup
                     const poItemsMap = {};
                     poItems.forEach(item => {
                         poItemsMap[item.sku || item.itemId] = item;
                     });
-                    
+
                     // Auto-fetch expected delivery from PO
                     const expectedDeliveryDate = poData.expectedDeliveryDate || shipment.shipmentDate;
-                    
+
                     // Prepare shipment data for API with proper item details
                     const validItems = shipment.items.filter(item => item.sentQty > 0);
 
@@ -330,7 +330,7 @@ export default function PODetail() {
                             };
                         })
                     };
-                    
+
                     const response = await apiClient.createShipment(shipmentData);
                     results.push({ success: response.success, shipmentNumber: shipment.shipmentNumber });
                 } catch (err) {
@@ -338,11 +338,11 @@ export default function PODetail() {
                     results.push({ success: false, shipmentNumber: shipment.shipmentNumber, error: err.message });
                 }
             }
-            
+
             const successCount = results.filter(r => r.success).length;
             await fetchShipments();
             await fetchPODetails(); // Refresh PO to show updated sent qty
-            
+
             return {
                 success: true,
                 message: `Imported ${successCount} shipment(s)`
@@ -376,7 +376,7 @@ export default function PODetail() {
 
     const handleCreateShipment = async (e) => {
         e.preventDefault();
-        
+
         if (!newShipment.shipmentNumber || !newShipment.transporterId || !newShipment.shippedQty) {
             alert('Please fill all required fields');
             return;
@@ -407,7 +407,7 @@ export default function PODetail() {
             };
 
             const response = await apiClient.createShipment(shipmentData);
-            
+
             if (response.success) {
                 // Reset form
                 setNewShipment({
@@ -436,14 +436,14 @@ export default function PODetail() {
 
     const handleApprove = async () => {
         if (!confirm('Are you sure you want to approve this PO?')) return;
-        
+
         setActionLoading(true);
         try {
             const response = await apiClient.approvePO(poId, {
                 approvedBy: 'current-user',
                 approvalNotes: 'Approved'
             });
-            
+
             if (response.success) {
                 fetchPODetails();
             } else {
@@ -459,14 +459,14 @@ export default function PODetail() {
     const handleCancel = async () => {
         const reason = prompt('Enter cancellation reason:');
         if (!reason) return;
-        
+
         setActionLoading(true);
         try {
             const response = await apiClient.cancelPO(poId, {
                 cancelledBy: 'current-user',
                 cancellationReason: reason
             });
-            
+
             if (response.success) {
                 fetchPODetails();
             } else {
@@ -519,7 +519,7 @@ export default function PODetail() {
                         </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <button 
+                        <button
                             onClick={() => exportPOToPDF(po, items)}
                             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                         >
@@ -614,6 +614,10 @@ export default function PODetail() {
                                 <span className="text-gray-600">Pending Qty</span>
                                 <span className="text-2xl font-bold text-orange-600">{(po.totalQuantity || 0) - (po.shippedQuantity || 0)}</span>
                             </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <span className="text-gray-600">Delivered Qty</span>
+                                <span className="text-2xl font-bold text-green-600">{po.deliveredQuantity || 0}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -627,6 +631,7 @@ export default function PODetail() {
                                 <tr>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Order Qty</th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shipped Qty</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Delivered Qty</th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pending Qty</th>
                                 </tr>
                             </thead>
@@ -635,13 +640,14 @@ export default function PODetail() {
                                     <tr key={idx}>
                                         <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.poQuantity}</td>
                                         <td className="px-4 py-3 text-sm text-green-600 text-right">{item.shippedQuantity || 0}</td>
+                                        <td className="px-4 py-3 text-sm text-blue-600 text-right">{item.deliveredQuantity || 0}</td>
                                         <td className="px-4 py-3 text-sm text-orange-600 text-right">{item.pendingQuantity || item.poQuantity}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    
+
                     {/* Show More Button */}
                     {items.length > 5 && (
                         <div className="mt-4 text-center">
@@ -695,7 +701,7 @@ export default function PODetail() {
                             </button>
                         </div>
                     </div>
-                    
+
                     {showCreateShipment && (
                         <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <h4 className="font-medium text-gray-900 mb-4">Create New Shipment</h4>
@@ -708,7 +714,7 @@ export default function PODetail() {
                                         <input
                                             type="text"
                                             value={newShipment.shipmentNumber}
-                                            onChange={(e) => setNewShipment({...newShipment, shipmentNumber: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, shipmentNumber: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             placeholder="Enter Shipment ID"
                                             required
@@ -720,7 +726,7 @@ export default function PODetail() {
                                         </label>
                                         <select
                                             value={newShipment.transporterId}
-                                            onChange={(e) => setNewShipment({...newShipment, transporterId: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, transporterId: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             required
                                         >
@@ -739,7 +745,7 @@ export default function PODetail() {
                                         <input
                                             type="date"
                                             value={newShipment.shipmentDate}
-                                            onChange={(e) => setNewShipment({...newShipment, shipmentDate: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, shipmentDate: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             required
                                         />
@@ -751,7 +757,7 @@ export default function PODetail() {
                                         <input
                                             type="number"
                                             value={newShipment.shippedQty}
-                                            onChange={(e) => setNewShipment({...newShipment, shippedQty: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, shippedQty: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             placeholder="Enter quantity"
                                             min="1"
@@ -765,7 +771,7 @@ export default function PODetail() {
                                         <input
                                             type="text"
                                             value={newShipment.docketNumber}
-                                            onChange={(e) => setNewShipment({...newShipment, docketNumber: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, docketNumber: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             placeholder="Enter LR/Docket number"
                                         />
@@ -777,7 +783,7 @@ export default function PODetail() {
                                         <input
                                             type="text"
                                             value={newShipment.invoiceNumber}
-                                            onChange={(e) => setNewShipment({...newShipment, invoiceNumber: e.target.value})}
+                                            onChange={(e) => setNewShipment({ ...newShipment, invoiceNumber: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             placeholder="Enter invoice number"
                                         />
@@ -787,7 +793,7 @@ export default function PODetail() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                                     <textarea
                                         value={newShipment.notes}
-                                        onChange={(e) => setNewShipment({...newShipment, notes: e.target.value})}
+                                        onChange={(e) => setNewShipment({ ...newShipment, notes: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         rows="2"
                                         placeholder="Optional notes"
@@ -812,7 +818,7 @@ export default function PODetail() {
                             </form>
                         </div>
                     )}
-                    
+
                     {shipments.length === 0 ? (
                         <div className="text-center py-8">
                             <Truck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -822,8 +828,8 @@ export default function PODetail() {
                     ) : (
                         <div className="space-y-3">
                             {shipments.map((shipment) => (
-                                <div 
-                                    key={shipment.shipmentId} 
+                                <div
+                                    key={shipment.shipmentId}
                                     className="border border-gray-200 rounded-lg p-5 hover:bg-gray-50 transition cursor-pointer"
                                     onClick={() => router.push(`/shipments/${shipment.shipmentId}`)}
                                 >
@@ -837,12 +843,11 @@ export default function PODetail() {
                                                     <h3 className="text-lg font-semibold text-gray-900">
                                                         {shipment.shipmentNumber || shipment.shipmentId}
                                                     </h3>
-                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                                                        shipment.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                                        shipment.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                                                        shipment.status === 'created' ? 'bg-purple-100 text-purple-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${shipment.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                            shipment.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                                                                shipment.status === 'created' ? 'bg-purple-100 text-purple-800' :
+                                                                    'bg-gray-100 text-gray-800'
+                                                        }`}>
                                                         {shipment.status?.replace('_', ' ').toUpperCase()}
                                                     </span>
                                                 </div>
@@ -908,7 +913,7 @@ export default function PODetail() {
                         <MessageSquare className="w-5 h-5 text-indigo-600" />
                         <h3 className="text-lg font-semibold text-gray-900">Comments & Logs ({comments.length})</h3>
                     </div>
-                    
+
                     {/* Add Comment Form */}
                     <form onSubmit={handleAddComment} className="mb-6">
                         <div className="flex space-x-3">
@@ -977,7 +982,7 @@ export default function PODetail() {
                     )}
                 </div>
             </div>
-            
+
             {/* Shipment Import Modal */}
             {showImportShipment && (
                 <ShipmentExcelImport

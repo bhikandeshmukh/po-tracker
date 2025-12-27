@@ -48,8 +48,8 @@ async function getAppointment(req, res, appointmentId) {
     const data = appointmentDoc.data();
     return res.status(200).json({
         success: true,
-        data: { 
-            id: appointmentDoc.id, 
+        data: {
+            id: appointmentDoc.id,
             ...data,
             scheduledDate: data.scheduledDate?.toDate?.()?.toISOString() || data.scheduledDate,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
@@ -82,7 +82,7 @@ async function updateAppointment(req, res, appointmentId, user) {
     const appointmentData = appointmentDoc.data();
     const shipmentId = appointmentData.shipmentId || appointmentId;
     const shipmentDoc = await db.collection('shipments').doc(shipmentId).get();
-    
+
     if (shipmentDoc.exists) {
         const shipmentUpdate = {
             updatedAt: new Date(),
@@ -122,6 +122,15 @@ async function updateAppointment(req, res, appointmentId, user) {
         }
         if (updateData.vendorName !== undefined) {
             shipmentUpdate.vendorName = updateData.vendorName;
+        }
+        if (updateData.deliveredQuantity !== undefined) {
+            shipmentUpdate.deliveredQuantity = updateData.deliveredQuantity;
+        }
+        if (updateData.shortageQuantity !== undefined) {
+            shipmentUpdate.shortageQuantity = updateData.shortageQuantity;
+        }
+        if (updateData.shortageReason !== undefined) {
+            shipmentUpdate.shortageReason = updateData.shortageReason;
         }
 
         await db.collection('shipments').doc(shipmentId).update(shipmentUpdate);

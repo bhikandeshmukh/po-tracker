@@ -5,12 +5,13 @@
 import { db } from '../../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
 import { validatePurchaseOrder, validateStatusTransition } from '../../../../lib/validation-schemas';
-import { 
-    updatePOWithTransaction, 
+import {
+    updatePOWithTransaction,
     deletePOWithTransaction,
-    validateVendorAndWarehouse 
+    validateVendorAndWarehouse
 } from '../../../../lib/po-helpers';
 import { standardRateLimiter } from '../../../../lib/rate-limiter';
+import { incrementMetric } from '../../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
             poId: req.query.poId,
             user: user?.uid
         });
-        
+
         return res.status(500).json({
             success: false,
             error: { code: 'SERVER_ERROR', message: 'Internal server error' }
@@ -89,7 +90,7 @@ async function getPurchaseOrder(req, res, poId) {
     }
 
     const poData = poDoc.data();
-    
+
     // Fetch warehouse name if missing but vendorWarehouseId exists
     if (!poData.vendorWarehouseName && poData.vendorWarehouseId && poData.vendorId) {
         try {
@@ -98,7 +99,7 @@ async function getPurchaseOrder(req, res, poId) {
                 .collection('warehouses')
                 .doc(poData.vendorWarehouseId)
                 .get();
-            
+
             if (warehouseDoc.exists) {
                 const warehouseData = warehouseDoc.data();
                 poData.vendorWarehouseName = warehouseData.warehouseName || warehouseData.name || poData.vendorWarehouseId;
@@ -107,7 +108,7 @@ async function getPurchaseOrder(req, res, poId) {
             console.error('Failed to fetch warehouse name:', err);
         }
     }
-    
+
     // Get items
     const itemsSnapshot = await db.collection('purchaseOrders')
         .doc(poId)
@@ -149,7 +150,7 @@ async function updatePurchaseOrder(req, res, poId, user) {
     try {
         // Validate update data
         const validation = validatePurchaseOrder(req.body, true);
-        
+
         if (!validation.valid) {
             return res.status(400).json({
                 success: false,
@@ -177,10 +178,10 @@ async function updatePurchaseOrder(req, res, poId, user) {
         // Validate status transition if status is being updated
         if (updateData.status && updateData.status !== currentPO.status) {
             const transitionValidation = validateStatusTransition(
-                currentPO.status, 
+                currentPO.status,
                 updateData.status
             );
-            
+
             if (!transitionValidation.valid) {
                 return res.status(400).json({
                     success: false,
@@ -196,9 +197,9 @@ async function updatePurchaseOrder(req, res, poId, user) {
         if (updateData.vendorId || updateData.vendorWarehouseId) {
             const vendorId = updateData.vendorId || currentPO.vendorId;
             const warehouseId = updateData.vendorWarehouseId || currentPO.vendorWarehouseId;
-            
+
             const vendorValidation = await validateVendorAndWarehouse(vendorId, warehouseId);
-            
+
             if (!vendorValidation.valid) {
                 return res.status(404).json({
                     success: false,
@@ -221,6 +222,29 @@ async function updatePurchaseOrder(req, res, poId, user) {
 
         // Update with transaction
         const result = await updatePOWithTransaction(poId, updateData, user);
+
+        // Sync metrics if status changed
+        if (updateData.status && updateData.status !== currentPO.status) {
+            const oldStatus = currentPO.status;
+            const newStatus = updateData.status;
+            const metricsToUpdate = [];
+
+            // Helper to get metric key from status
+            const getMetricKey = (status) => {
+                if (['approved', 'partial_sent'].includes(status)) return 'activePOs';
+                if (['completed', 'partial_completed'].includes(status)) return 'completedPOs';
+                if (['pending', 'draft'].includes(status)) return 'pendingPOs';
+                return null;
+            };
+
+            const oldKey = getMetricKey(oldStatus);
+            const newKey = getMetricKey(newStatus);
+
+            if (oldKey) metricsToUpdate.push(incrementMetric(oldKey, -1));
+            if (newKey) metricsToUpdate.push(incrementMetric(newKey, 1));
+
+            await Promise.all(metricsToUpdate);
+        }
 
         return res.status(200).json({
             success: true,
@@ -245,7 +269,32 @@ async function updatePurchaseOrder(req, res, poId, user) {
 // FIXED: Transaction-based cascade delete
 async function deletePurchaseOrder(req, res, poId, user) {
     try {
+        const poDoc = await db.collection('purchaseOrders').doc(poId).get();
+        if (!poDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                error: { code: 'NOT_FOUND', message: 'Purchase order not found' }
+            });
+        }
+        const poData = poDoc.data();
+
         await deletePOWithTransaction(poId, user);
+
+        // Sync metrics (O(1) update)
+        const metricsToUpdate = [
+            incrementMetric('totalPOs', -1),
+            incrementMetric('totalOrderQty', -(poData.totalQuantity || 0)),
+            incrementMetric('totalShippedQty', -(poData.shippedQuantity || 0)),
+            incrementMetric('totalPendingQty', -(poData.pendingQuantity || 0))
+        ];
+
+        // Status counts
+        const status = poData.status;
+        if (['approved', 'partial_sent'].includes(status)) metricsToUpdate.push(incrementMetric('activePOs', -1));
+        else if (['completed', 'partial_completed'].includes(status)) metricsToUpdate.push(incrementMetric('completedPOs', -1));
+        else if (['pending', 'draft'].includes(status)) metricsToUpdate.push(incrementMetric('pendingPOs', -1));
+
+        await Promise.all(metricsToUpdate);
 
         return res.status(200).json({
             success: true,

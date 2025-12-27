@@ -4,6 +4,7 @@
 import { db } from '../../../lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -47,7 +48,7 @@ async function getShipments(req, res) {
 
     // Fetch all and filter in memory to avoid composite index requirement
     const snapshot = await query.get();
-    
+
     let shipments = snapshot.docs.map(doc => ({
         id: doc.id,
         shipmentId: doc.id,
@@ -103,18 +104,18 @@ async function createShipment(req, res, user) {
 
     // Convert appointmentNumber to string if it's a number
     const appointmentNumberStr = appointmentNumber != null ? String(appointmentNumber) : '';
-    
+
     if (!appointmentNumberStr || !poId || !transporterId || !items || items.length === 0) {
         const missingFields = [];
         if (!appointmentNumberStr) missingFields.push('appointmentNumber');
         if (!poId) missingFields.push('poId');
         if (!transporterId) missingFields.push('transporterId');
         if (!items || items.length === 0) missingFields.push('items');
-        
+
         return res.status(400).json({
             success: false,
-            error: { 
-                code: 'VALIDATION_ERROR', 
+            error: {
+                code: 'VALIDATION_ERROR',
                 message: `Missing required fields: ${missingFields.join(', ')}`,
                 details: { missingFields, receivedAppointmentNumber: appointmentNumber }
             }
@@ -127,8 +128,8 @@ async function createShipment(req, res, user) {
     if (!shipmentId || shipmentId.length === 0) {
         return res.status(400).json({
             success: false,
-            error: { 
-                code: 'INVALID_APPOINTMENT_NUMBER', 
+            error: {
+                code: 'INVALID_APPOINTMENT_NUMBER',
                 message: 'Invalid appointmentNumber - cannot be empty',
                 details: { receivedAppointmentNumber: appointmentNumber }
             }
@@ -139,8 +140,8 @@ async function createShipment(req, res, user) {
     if (!poId || typeof poId !== 'string' || poId.trim().length === 0) {
         return res.status(400).json({
             success: false,
-            error: { 
-                code: 'INVALID_PO_ID', 
+            error: {
+                code: 'INVALID_PO_ID',
                 message: 'Invalid poId format. Expected a valid document ID, not a PO number.',
                 details: { receivedPoId: poId }
             }
@@ -163,19 +164,19 @@ async function createShipment(req, res, user) {
     } catch (error) {
         return res.status(400).json({
             success: false,
-            error: { 
-                code: 'INVALID_PO_ID', 
+            error: {
+                code: 'INVALID_PO_ID',
                 message: `Invalid poId: ${error.message}. Make sure you're passing the document ID, not the PO number.`,
                 details: { receivedPoId: poId }
             }
         });
     }
-    
+
     if (!poDoc.exists) {
         return res.status(404).json({
             success: false,
-            error: { 
-                code: 'PO_NOT_FOUND', 
+            error: {
+                code: 'PO_NOT_FOUND',
                 message: `Purchase order with ID '${poId}' not found. Make sure you're using the document ID, not the PO number.`,
                 details: { receivedPoId: poId }
             }
@@ -190,7 +191,7 @@ async function createShipment(req, res, user) {
         // Validate IDs are not empty strings
         const vendorIdValid = poData.vendorId && typeof poData.vendorId === 'string' && poData.vendorId.trim().length > 0;
         const warehouseIdValid = poData.vendorWarehouseId && typeof poData.vendorWarehouseId === 'string' && poData.vendorWarehouseId.trim().length > 0;
-        
+
         if (vendorIdValid && warehouseIdValid) {
             try {
                 // Get warehouse details to check location
@@ -199,34 +200,34 @@ async function createShipment(req, res, user) {
                     .collection('warehouses')
                     .doc(poData.vendorWarehouseId)
                     .get();
-        
-        if (warehouseDoc.exists) {
-            const warehouseData = warehouseDoc.data();
-            const warehouseName = (warehouseData.name || warehouseData.warehouseName || '').toLowerCase();
-            const addressCity = (warehouseData.address?.city || '').toLowerCase();
-            const location = warehouseName || addressCity;
-            
-            // Calculate delivery days based on location
-            let deliveryDays = 8; // Default for other locations
-            if (location.includes('mumbai') || location.includes('bhiwandi')) {
-                deliveryDays = 4;
-            }
-            
-            // Add delivery days to shipment date
-            const shipDate = new Date(shipmentDate);
-            calculatedDeliveryDate = new Date(shipDate);
-            calculatedDeliveryDate.setDate(shipDate.getDate() + deliveryDays);
-            calculatedDeliveryDate = calculatedDeliveryDate.toISOString();
-            
-                console.log(`Auto-calculated delivery date: ${location} -> ${deliveryDays} days -> ${calculatedDeliveryDate}`);
-            }
+
+                if (warehouseDoc.exists) {
+                    const warehouseData = warehouseDoc.data();
+                    const warehouseName = (warehouseData.name || warehouseData.warehouseName || '').toLowerCase();
+                    const addressCity = (warehouseData.address?.city || '').toLowerCase();
+                    const location = warehouseName || addressCity;
+
+                    // Calculate delivery days based on location
+                    let deliveryDays = 8; // Default for other locations
+                    if (location.includes('mumbai') || location.includes('bhiwandi')) {
+                        deliveryDays = 4;
+                    }
+
+                    // Add delivery days to shipment date
+                    const shipDate = new Date(shipmentDate);
+                    calculatedDeliveryDate = new Date(shipDate);
+                    calculatedDeliveryDate.setDate(shipDate.getDate() + deliveryDays);
+                    calculatedDeliveryDate = calculatedDeliveryDate.toISOString();
+
+                    console.log(`Auto-calculated delivery date: ${location} -> ${deliveryDays} days -> ${calculatedDeliveryDate}`);
+                }
             } catch (error) {
                 console.error('Failed to fetch warehouse for delivery calculation:', error);
                 // Continue without auto-calculation
             }
         }
     }
-    
+
     // Fallback to PO expected delivery date if still not set
     if (!calculatedDeliveryDate) {
         calculatedDeliveryDate = poData.expectedDeliveryDate || shipmentDate;
@@ -237,8 +238,8 @@ async function createShipment(req, res, user) {
     if (!transporterId || typeof transporterId !== 'string' || transporterId.trim().length === 0) {
         return res.status(400).json({
             success: false,
-            error: { 
-                code: 'INVALID_TRANSPORTER_ID', 
+            error: {
+                code: 'INVALID_TRANSPORTER_ID',
                 message: 'Invalid transporterId',
                 details: { receivedTransporterId: transporterId }
             }
@@ -268,7 +269,7 @@ async function createShipment(req, res, user) {
 
     // Calculate GST (no longer needed - quantity only)
     const totalGST = 0;
-    
+
     // Create shipment
     const shipmentData = {
         shipmentId,
@@ -300,7 +301,7 @@ async function createShipment(req, res, user) {
 
     // Save shipment items
     const batch = db.batch();
-    
+
     for (const item of processedItems) {
         const shipmentItemRef = db.collection('shipments')
             .doc(shipmentId)
@@ -308,7 +309,7 @@ async function createShipment(req, res, user) {
             .doc(item.itemId);
         batch.set(shipmentItemRef, item);
     }
-    
+
     await batch.commit();
 
     // Update PO items with shipped quantity
@@ -316,35 +317,35 @@ async function createShipment(req, res, user) {
         .doc(poId)
         .collection('items')
         .get();
-    
+
     if (!poItemsSnapshot.empty) {
         const poItemsBatch = db.batch();
         let remainingQtyToShip = totalQuantity;
-        
+
         // Distribute shipped quantity across PO items
         for (const poItemDoc of poItemsSnapshot.docs) {
             if (remainingQtyToShip <= 0) break;
-            
+
             const poItemData = poItemDoc.data();
             const currentShipped = poItemData.shippedQuantity || 0;
             const poQty = poItemData.poQuantity || 0;
             const availableToShip = poQty - currentShipped;
-            
+
             if (availableToShip > 0) {
                 const qtyToShip = Math.min(availableToShip, remainingQtyToShip);
                 const newShipped = currentShipped + qtyToShip;
                 const newPending = poQty - newShipped;
-                
+
                 poItemsBatch.update(poItemDoc.ref, {
                     shippedQuantity: newShipped,
                     pendingQuantity: Math.max(0, newPending),
                     updatedAt: new Date()
                 });
-                
+
                 remainingQtyToShip -= qtyToShip;
             }
         }
-        
+
         await poItemsBatch.commit();
         console.log('PO items updated with shipped quantity');
     }
@@ -353,26 +354,26 @@ async function createShipment(req, res, user) {
     console.log('Updating PO totals for:', poId);
     const poRefForUpdate = db.collection('purchaseOrders').doc(poId);
     const poDocForUpdate = await poRefForUpdate.get();
-    
+
     if (!poDocForUpdate.exists) {
         console.error('PO not found for update:', poId);
     } else {
         const currentPOData = poDocForUpdate.data();
         console.log('Current PO shipped qty:', currentPOData.shippedQuantity || 0);
         console.log('Adding shipped qty:', totalQuantity);
-        
+
         const newPOShippedQty = (currentPOData.shippedQuantity || 0) + totalQuantity;
         const newPOPendingQty = (currentPOData.totalQuantity || 0) - newPOShippedQty;
-        
+
         console.log('New PO shipped qty:', newPOShippedQty);
         console.log('New PO pending qty:', newPOPendingQty);
-        
+
         // Determine new PO status based on shipped quantity and expiry
         let newPOStatus = currentPOData.status;
         const totalQty = currentPOData.totalQuantity || 0;
         const expectedDeliveryDate = currentPOData.expectedDeliveryDate?.toDate?.() || new Date(currentPOData.expectedDeliveryDate);
         const isExpired = expectedDeliveryDate && new Date() > expectedDeliveryDate;
-        
+
         if (newPOShippedQty >= totalQty) {
             // All items shipped
             newPOStatus = 'completed';
@@ -386,20 +387,20 @@ async function createShipment(req, res, user) {
                 newPOStatus = 'partial_sent';
             }
         }
-        
+
         await poRefForUpdate.update({
             shippedQuantity: newPOShippedQty,
             pendingQuantity: Math.max(0, newPOPendingQty),
             status: newPOStatus,
             updatedAt: new Date()
         });
-        
+
         console.log('PO totals and status updated successfully. New status:', newPOStatus);
     }
 
     // Create appointment
     console.log('Creating appointment with shipmentId:', shipmentId);
-    
+
     try {
         const appointmentData = {
             appointmentId: shipmentId,
@@ -425,9 +426,9 @@ async function createShipment(req, res, user) {
             updatedAt: new Date(),
             createdBy: user.uid
         };
-        
+
         console.log('Appointment data to be created:', JSON.stringify(appointmentData, null, 2));
-        
+
         await db.collection('appointments').doc(shipmentId).set(appointmentData);
         console.log('Appointment created successfully:', shipmentId);
     } catch (error) {
@@ -436,17 +437,23 @@ async function createShipment(req, res, user) {
         // Return error instead of silently failing
         return res.status(500).json({
             success: false,
-            error: { 
-                code: 'APPOINTMENT_CREATION_FAILED', 
+            error: {
+                code: 'APPOINTMENT_CREATION_FAILED',
                 message: `Shipment created but appointment creation failed: ${error.message}`,
-                details: { 
+                details: {
                     shipmentId,
                     appointmentNumber,
-                    errorMessage: error.message 
+                    errorMessage: error.message
                 }
             }
         });
     }
+
+    // Sync metrics (O(1) update)
+    await Promise.all([
+        incrementMetric('totalShipments', 1),
+        incrementMetric('pendingShipments', 1)
+    ]);
 
     // Create audit log with predictable ID
     const auditLogId = `SHIPMENT_CREATED_${shipmentId}`;

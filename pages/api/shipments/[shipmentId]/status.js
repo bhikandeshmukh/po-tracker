@@ -3,6 +3,7 @@
 
 import { db } from '../../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
+import { incrementMetric } from '../../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
         // Get shipment data for activity logs
         const shipmentDoc = await db.collection('shipments').doc(shipmentId).get();
         const shipmentData = shipmentDoc.data();
-        
+
         // Update shipment status
         await db.collection('shipments').doc(shipmentId).update({
             status,
@@ -66,6 +67,25 @@ export default async function handler(req, res) {
                 updatedAt: new Date(),
                 updatedBy: user.uid
             });
+        }
+
+        // Sync metrics (O(1) update)
+        if (status !== shipmentData.status) {
+            const oldStatus = shipmentData.status;
+            const newStatus = status;
+            const metricsToUpdate = [];
+
+            // Decrement old category
+            if (['created', 'pending'].includes(oldStatus)) metricsToUpdate.push(incrementMetric('pendingShipments', -1));
+            else if (oldStatus === 'in_transit') metricsToUpdate.push(incrementMetric('inTransitShipments', -1));
+            else if (oldStatus === 'delivered') metricsToUpdate.push(incrementMetric('deliveredShipments', -1));
+
+            // Increment new category
+            if (['created', 'pending'].includes(newStatus)) metricsToUpdate.push(incrementMetric('pendingShipments', 1));
+            else if (newStatus === 'in_transit') metricsToUpdate.push(incrementMetric('inTransitShipments', 1));
+            else if (newStatus === 'delivered') metricsToUpdate.push(incrementMetric('deliveredShipments', 1));
+
+            await Promise.all(metricsToUpdate);
         }
 
         // Create audit log with predictable ID
@@ -111,14 +131,14 @@ export default async function handler(req, res) {
         if (status === 'delivered') {
             const shipmentDoc = await db.collection('shipments').doc(shipmentId).get();
             const shipmentData = shipmentDoc.data();
-            
+
             if (shipmentData && shipmentData.poId) {
                 // Get shipment items
                 const itemsSnapshot = await db.collection('shipments')
                     .doc(shipmentId)
                     .collection('items')
                     .get();
-                
+
                 // Update PO items
                 const batch = db.batch();
                 itemsSnapshot.docs.forEach(itemDoc => {
@@ -127,13 +147,13 @@ export default async function handler(req, res) {
                         .doc(shipmentData.poId)
                         .collection('items')
                         .doc(item.itemId || itemDoc.id);
-                    
+
                     batch.update(poItemRef, {
                         receivedQuantity: (item.receivedQuantity || 0) + (item.shippedQuantity || 0),
                         updatedAt: new Date()
                     });
                 });
-                
+
                 await batch.commit();
             }
         }

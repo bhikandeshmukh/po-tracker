@@ -3,6 +3,7 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -60,8 +61,8 @@ async function getShipment(req, res, shipmentId) {
     }
 
     const data = shipmentDoc.data();
-    const shipmentData = { 
-        id: shipmentDoc.id, 
+    const shipmentData = {
+        id: shipmentDoc.id,
         ...data,
         shipmentDate: data.shipmentDate?.toDate?.()?.toISOString() || data.shipmentDate,
         expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.()?.toISOString() || data.expectedDeliveryDate,
@@ -140,7 +141,7 @@ async function deleteShipment(req, res, shipmentId, user) {
     // Update PO totals
     const poRef = db.collection('purchaseOrders').doc(poId);
     const poDoc = await poRef.get();
-    
+
     if (poDoc.exists) {
         const poData = poDoc.data();
         const currentShippedQty = poData.shippedQuantity || 0;
@@ -193,6 +194,24 @@ async function deleteShipment(req, res, shipmentId, user) {
 
     await batch.commit();
 
+    // Sync metrics (O(1) update)
+    const metricsToUpdate = [
+        incrementMetric('totalShipments', -1)
+    ];
+
+    if (shipmentData.status === 'delivered') {
+        metricsToUpdate.push(incrementMetric('deliveredShipments', -1));
+        if (shipmentData.deliveredQuantity) {
+            metricsToUpdate.push(incrementMetric('totalDeliveredQty', -shipmentData.deliveredQuantity));
+        }
+    } else if (shipmentData.status === 'in_transit') {
+        metricsToUpdate.push(incrementMetric('inTransitShipments', -1));
+    } else if (['created', 'pending'].includes(shipmentData.status)) {
+        metricsToUpdate.push(incrementMetric('pendingShipments', -1));
+    }
+
+    await Promise.all(metricsToUpdate);
+
     // Create audit log
     await db.collection('auditLogs').add({
         logId: `SHIPMENT_DELETED_${shipmentId}_${Date.now()}`,
@@ -231,7 +250,7 @@ async function updateShipment(req, res, shipmentId, user) {
     }
 
     const { newShipmentId, ...otherUpdates } = req.body;
-    
+
     // If shipment ID is being changed
     if (newShipmentId && newShipmentId !== shipmentId) {
         const shipmentData = shipmentDoc.data();
@@ -251,7 +270,7 @@ async function updateShipment(req, res, shipmentId, user) {
         const appointmentId = shipmentData.appointmentId || shipmentId;
         const appointmentRef = db.collection('appointments').doc(appointmentId);
         const appointmentDoc = await appointmentRef.get();
-        
+
         if (appointmentDoc.exists) {
             batch.update(appointmentRef, {
                 appointmentNumber: newShipmentId,
@@ -266,7 +285,7 @@ async function updateShipment(req, res, shipmentId, user) {
         const auditLogsSnapshot = await db.collection('auditLogs')
             .where('entityId', '==', shipmentId)
             .get();
-        
+
         auditLogsSnapshot.docs.forEach(logDoc => {
             batch.update(logDoc.ref, {
                 entityId: newShipmentId,
@@ -278,12 +297,12 @@ async function updateShipment(req, res, shipmentId, user) {
         if (shipmentData.poId) {
             const poRef = db.collection('purchaseOrders').doc(shipmentData.poId);
             const poDoc = await poRef.get();
-            
+
             if (poDoc.exists) {
                 const poData = poDoc.data();
                 // Update shipments array if it exists
                 if (poData.shipments && Array.isArray(poData.shipments)) {
-                    const updatedShipments = poData.shipments.map(s => 
+                    const updatedShipments = poData.shipments.map(s =>
                         s === shipmentId ? newShipmentId : s
                     );
                     batch.update(poRef, { shipments: updatedShipments });
@@ -323,11 +342,63 @@ async function updateShipment(req, res, shipmentId, user) {
 
         await db.collection('shipments').doc(shipmentId).update(updateData);
 
+        // Sync metrics (O(1) update)
+        if (updateData.status && updateData.status !== shipmentData.status) {
+            const oldStatus = shipmentData.status;
+            const newStatus = updateData.status;
+            const metricsToUpdate = [];
+
+            // Decrement old category
+            if (['created', 'pending'].includes(oldStatus)) metricsToUpdate.push(incrementMetric('pendingShipments', -1));
+            else if (oldStatus === 'in_transit') metricsToUpdate.push(incrementMetric('inTransitShipments', -1));
+            else if (oldStatus === 'delivered') metricsToUpdate.push(incrementMetric('deliveredShipments', -1));
+
+            // Increment new category
+            if (['created', 'pending'].includes(newStatus)) metricsToUpdate.push(incrementMetric('pendingShipments', 1));
+            else if (newStatus === 'in_transit') metricsToUpdate.push(incrementMetric('inTransitShipments', 1));
+            else if (newStatus === 'delivered') metricsToUpdate.push(incrementMetric('deliveredShipments', 1));
+
+            await Promise.all(metricsToUpdate);
+        }
+
+        if (updateData.deliveredQuantity !== undefined) {
+            // Update totalDeliveredQty metric
+            const oldDelivered = shipmentData.deliveredQuantity || 0;
+            const diff = updateData.deliveredQuantity - oldDelivered;
+            if (diff !== 0) {
+                await incrementMetric('totalDeliveredQty', diff);
+            }
+        }
+
+        // If status is updated to delivered, update PO delivered quantity
+        if (updateData.status === 'delivered' && updateData.deliveredQuantity !== undefined) {
+            const shipmentData = shipmentDoc.data();
+            if (shipmentData.poId) {
+                try {
+                    const poRef = db.collection('purchaseOrders').doc(shipmentData.poId);
+                    const poDoc = await poRef.get();
+                    if (poDoc.exists) {
+                        const poData = poDoc.data();
+                        const currentDelivered = poData.deliveredQuantity || 0;
+                        // For simplicity, we add the shipment's delivered quantity to the PO's total
+                        // Note: To be more robust, we should calculate from all shipments if this is a correction
+                        await poRef.update({
+                            deliveredQuantity: currentDelivered + updateData.deliveredQuantity,
+                            updatedAt: new Date()
+                        });
+                        console.log(`Updated PO ${shipmentData.poId} delivered quantity (+${updateData.deliveredQuantity})`);
+                    }
+                } catch (err) {
+                    console.error('Failed to update PO delivered quantity:', err);
+                }
+            }
+        }
+
         // Sync all fields to linked appointment
         const shipmentData = shipmentDoc.data();
         const appointmentId = shipmentData.appointmentId || shipmentId;
         const appointmentDoc = await db.collection('appointments').doc(appointmentId).get();
-        
+
         if (appointmentDoc.exists) {
             const appointmentUpdate = {
                 updatedAt: new Date(),
@@ -358,6 +429,18 @@ async function updateShipment(req, res, shipmentId, user) {
             }
             if (updateData.totalQuantity !== undefined) {
                 appointmentUpdate.totalQuantity = updateData.totalQuantity;
+            }
+            if (updateData.deliveredQuantity !== undefined) {
+                appointmentUpdate.deliveredQuantity = updateData.deliveredQuantity;
+            }
+            if (updateData.shortageQuantity !== undefined) {
+                appointmentUpdate.shortageQuantity = updateData.shortageQuantity;
+            }
+            if (updateData.shortageReason !== undefined) {
+                appointmentUpdate.shortageReason = updateData.shortageReason;
+            }
+            if (updateData.deliveredAt !== undefined) {
+                appointmentUpdate.deliveredAt = updateData.deliveredAt;
             }
 
             await db.collection('appointments').doc(appointmentId).update(appointmentUpdate);
