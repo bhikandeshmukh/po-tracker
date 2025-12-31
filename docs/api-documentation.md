@@ -945,3 +945,225 @@ All list endpoints support pagination:
 ---
 
 **End of API Documentation**
+
+
+---
+
+## Search APIs
+
+### 1. Global Search
+**GET** `/api/search`
+
+Search across all entities with scalable token-based indexing.
+
+**Query Parameters:**
+- `q` (required): Search query (minimum 2 characters)
+- `types` (optional): Comma-separated entity types to search
+- `limit` (optional): Maximum results (default: 20, max: 50)
+- `offset` (optional): Pagination offset
+- `useIndex` (optional): `true`, `false`, or `auto` (default: `auto`)
+
+**Available Entity Types:**
+- `purchaseOrder`
+- `vendor`
+- `appointment`
+- `shipment`
+- `transporter`
+- `returnOrder`
+
+```javascript
+// Request
+GET /api/search?q=abc&types=purchaseOrder,vendor&limit=10
+
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "type": "Purchase Order",
+      "title": "PO-2024-0001",
+      "subtitle": "ABC Traders - approved",
+      "link": "/purchase-orders/PO-2024-0001",
+      "entityType": "purchaseOrder",
+      "entityId": "PO-2024-0001",
+      "relevance": 0
+    },
+    {
+      "type": "Vendor",
+      "title": "ABC Traders",
+      "subtitle": "VEN-001",
+      "link": "/vendors/abc-traders",
+      "entityType": "vendor",
+      "entityId": "abc-traders",
+      "relevance": 1
+    }
+  ],
+  "total": 2,
+  "hasMore": false,
+  "pagination": {
+    "limit": 10,
+    "offset": 0
+  }
+}
+```
+
+**Search Features:**
+- Prefix matching (searching "abc" matches "abcdef")
+- Multi-word search (all words must match)
+- Relevance ranking (exact matches first)
+- Case-insensitive
+
+---
+
+## Admin APIs
+
+### 1. Rebuild Search Index
+**POST** `/api/admin/rebuild-search-index`
+
+Rebuilds the search index for all or specified entity types. Requires admin role.
+
+```javascript
+// Request
+{
+  "entityTypes": ["purchaseOrder", "vendor"]  // Optional, defaults to all
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "message": "Search index rebuilt successfully",
+    "indexed": 156,
+    "errors": 0
+  }
+}
+```
+
+### 2. Sync Appointments
+**POST** `/api/admin/sync-appointments`
+
+Synchronizes appointment data with shipments. Requires admin role.
+
+```javascript
+// Response
+{
+  "success": true,
+  "data": {
+    "synced": 45,
+    "errors": 0
+  }
+}
+```
+
+### 3. Fix PO Quantities
+**POST** `/api/admin/fix-po-quantities`
+
+Recalculates and fixes PO quantity inconsistencies. Requires admin role.
+
+```javascript
+// Response
+{
+  "success": true,
+  "data": {
+    "fixed": 12,
+    "errors": 0
+  }
+}
+```
+
+### 4. Sync PO Items
+**POST** `/api/admin/sync-po-items`
+
+Synchronizes PO item quantities with shipments. Requires admin role.
+
+```javascript
+// Response
+{
+  "success": true,
+  "data": {
+    "synced": 89,
+    "errors": 0
+  }
+}
+```
+
+---
+
+## Health Check API
+
+### 1. Health Check
+**GET** `/api/health`
+
+Returns system health status. No authentication required.
+
+```javascript
+// Response
+{
+  "success": true,
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 86400,
+  "services": {
+    "firestore": {
+      "status": "connected",
+      "latency": "45ms"
+    },
+    "api": {
+      "status": "running",
+      "version": "1.0.0"
+    }
+  },
+  "environment": "production"
+}
+```
+
+**Unhealthy Response (503):**
+```javascript
+{
+  "success": false,
+  "status": "unhealthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "error": {
+    "code": "SERVICE_UNAVAILABLE",
+    "message": "Health check failed",
+    "details": "Firestore connection timeout"
+  }
+}
+```
+
+---
+
+## Real-time Subscriptions
+
+For real-time data updates, use the Firestore client SDK directly with the provided hooks:
+
+```javascript
+import { usePOList, usePODetail } from '../hooks/usePORealtime';
+import { useShipmentList, useDashboardMetrics } from '../hooks/useRealtime';
+
+// Real-time PO list
+const { orders, loading, error } = usePOList({ status: 'approved' });
+
+// Real-time dashboard metrics
+const { metrics } = useDashboardMetrics();
+```
+
+See [Real-time Hooks Guide](realtime-hooks-guide.md) for complete documentation.
+
+---
+
+## Type Validation
+
+All API endpoints validate input using Zod schemas:
+
+```javascript
+import { validate, PurchaseOrderSchema } from '../lib/types';
+
+// Validate before sending
+const result = validate(PurchaseOrderSchema, data);
+if (!result.success) {
+  console.error(result.errors);
+}
+```
+
+See [Type Safety Guide](type-safety-guide.md) for complete documentation.
