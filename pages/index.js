@@ -21,9 +21,12 @@ export default function Home() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading...</p>
+            <div className="text-center space-y-4">
+                <div className="animate-pulse">
+                    <div className="h-16 w-16 bg-indigo-200 rounded-xl mx-auto mb-4"></div>
+                    <div className="h-6 w-48 bg-indigo-200 rounded mx-auto mb-2"></div>
+                    <div className="h-4 w-32 bg-indigo-100 rounded mx-auto"></div>
+                </div>
             </div>
         </div>
     );

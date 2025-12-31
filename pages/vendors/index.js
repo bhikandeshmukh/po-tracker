@@ -7,6 +7,7 @@ import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import ExcelImportWithAPI from '../../components/Common/ExcelImportWithAPI';
 import { Building2, Plus, Search, Eye, Edit, Star, MapPin, Phone, Mail } from 'lucide-react';
+import { ListSkeleton } from '../../components/Common/LoadingSkeleton';
 
 export default function Vendors() {
     const router = useRouter();
@@ -136,9 +137,7 @@ export default function Vendors() {
 
                 {/* Vendors Grid */}
                 {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                    </div>
+                    <ListSkeleton rows={6} />
                 ) : filteredVendors.length === 0 ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                         <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />

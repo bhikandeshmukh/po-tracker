@@ -19,6 +19,7 @@ import {
     Phone,
     Calendar
 } from 'lucide-react';
+import { TableSkeleton } from '../../components/Common/LoadingSkeleton';
 
 const roleColors = {
     super_admin: 'bg-purple-100 text-purple-800',
@@ -169,9 +170,7 @@ export default function UsersManagement() {
                 {/* Users Table */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     {loading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                        </div>
+                        <TableSkeleton rows={8} columns={6} />
                     ) : filteredUsers.length === 0 ? (
                         <div className="text-center py-12">
                             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />

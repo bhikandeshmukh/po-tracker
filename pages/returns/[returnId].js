@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import { ArrowLeft, CheckCircle, XCircle, Package, Calendar, AlertCircle } from 'lucide-react';
+import { DetailSkeleton } from '../../components/Common/LoadingSkeleton';
 
 export default function ReturnDetail() {
     const router = useRouter();
@@ -81,9 +82,7 @@ export default function ReturnDetail() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                </div>
+                <DetailSkeleton />
             </Layout>
         );
     }

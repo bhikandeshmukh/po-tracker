@@ -18,6 +18,7 @@ import {
     Users,
     RefreshCw
 } from 'lucide-react';
+import { DashboardSkeleton } from '../components/Common/LoadingSkeleton';
 
 export default function Dashboard() {
     const router = useRouter();
@@ -101,9 +102,7 @@ export default function Dashboard() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                </div>
+                <DashboardSkeleton />
             </Layout>
         );
     }

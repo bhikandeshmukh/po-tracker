@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Layout from '../../../components/Layout/Layout';
 import apiClient from '../../../lib/api-client';
 import { ArrowLeft, Save } from 'lucide-react';
+import { FormSkeleton } from '../../../components/Common/LoadingSkeleton';
 
 export default function EditShipment() {
     const router = useRouter();
@@ -92,9 +93,7 @@ export default function EditShipment() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                </div>
+                <FormSkeleton />
             </Layout>
         );
     }

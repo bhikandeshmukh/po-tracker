@@ -8,6 +8,7 @@ import apiClient from '../../lib/api-client';
 import ExcelImport from '../../components/Common/ExcelImport';
 import { Truck, Plus, Search, MapPin, Package, Calendar } from 'lucide-react';
 import { formatDate } from '../../lib/date-utils';
+import { ListSkeleton } from '../../components/Common/LoadingSkeleton';
 
 const statusColors = {
     created: 'bg-gray-100 text-gray-800',
@@ -130,9 +131,7 @@ export default function Shipments() {
 
                 {/* Shipments List */}
                 {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                    </div>
+                    <ListSkeleton rows={6} />
                 ) : shipments.length === 0 ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                         <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />

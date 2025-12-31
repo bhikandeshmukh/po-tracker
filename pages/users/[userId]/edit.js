@@ -7,6 +7,7 @@ import Layout from '../../../components/Layout/Layout';
 import apiClient from '../../../lib/api-client';
 import { useAuth } from '../../../lib/auth-client';
 import { User, Mail, Phone, Shield, ArrowLeft, Save } from 'lucide-react';
+import { FormSkeleton } from '../../../components/Common/LoadingSkeleton';
 
 const roles = [
     { value: 'user', label: 'User', description: 'Basic access' },
@@ -128,9 +129,7 @@ function EditUser() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-                </div>
+                <FormSkeleton />
             </Layout>
         );
     }

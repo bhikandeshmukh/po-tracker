@@ -5,6 +5,7 @@ import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
 import WarehouseModal from '../../components/Vendors/WarehouseModal';
 import { ArrowLeft, Edit, Trash2, Building2, Phone, Mail, MapPin, Globe, FileText, Warehouse, Plus } from 'lucide-react';
+import { DetailSkeleton, ListSkeleton } from '../../components/Common/LoadingSkeleton';
 
 export default function VendorDetail() {
     const router = useRouter();
@@ -104,9 +105,7 @@ export default function VendorDetail() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                </div>
+                <DetailSkeleton />
             </Layout>
         );
     }
@@ -232,9 +231,7 @@ export default function VendorDetail() {
                     </div>
 
                     {warehousesLoading ? (
-                        <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                        </div>
+                        <ListSkeleton rows={3} />
                     ) : warehouses.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             <Warehouse className="w-12 h-12 text-gray-300 mx-auto mb-2" />

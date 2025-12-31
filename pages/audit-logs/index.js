@@ -18,6 +18,7 @@ import {
     FileText,
     Activity
 } from 'lucide-react';
+import { TableSkeleton } from '../../components/Common/LoadingSkeleton';
 
 export default function AuditLogs() {
     const router = useRouter();
@@ -303,9 +304,7 @@ export default function AuditLogs() {
                                 {loading ? (
                                     <tr>
                                         <td colSpan="7" className="px-6 py-12 text-center">
-                                            <div className="flex justify-center">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                            </div>
+                                            <TableSkeleton rows={8} columns={7} />
                                         </td>
                                     </tr>
                                 ) : logs.length === 0 ? (

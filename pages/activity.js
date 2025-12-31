@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout/Layout';
 import apiClient from '../lib/api-client';
 import { Activity, Clock, User, Package, Truck, Calendar, Filter } from 'lucide-react';
+import { ActivitySkeleton } from '../components/Common/LoadingSkeleton';
 
 export default function ActivityPage() {
     const router = useRouter();
@@ -106,8 +107,8 @@ export default function ActivityPage() {
                 {/* Activity List */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     {loading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                        <div className="p-6">
+                            <ActivitySkeleton rows={8} />
                         </div>
                     ) : filteredActivities.length === 0 ? (
                         <div className="text-center py-12">

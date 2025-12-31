@@ -5,6 +5,7 @@ import Layout from '../../../components/Layout/Layout';
 import POForm from '../../../components/PurchaseOrders/POForm';
 import apiClient from '../../../lib/api-client';
 import { ArrowLeft } from 'lucide-react';
+import { FormSkeleton } from '../../../components/Common/LoadingSkeleton';
 
 function EditPurchaseOrder() {
     const router = useRouter();
@@ -106,9 +107,7 @@ function EditPurchaseOrder() {
     if (loading) {
         return (
             <Layout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                </div>
+                <FormSkeleton />
             </Layout>
         );
     }
