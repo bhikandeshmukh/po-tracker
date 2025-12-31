@@ -428,9 +428,28 @@ export default function AuditLogs() {
                                     </div>
                                 )}
 
-                                <div>
+                                {/* Device Info Section */}
+                                <div className="mt-6">
+                                    <h4 className="text-sm font-medium text-gray-700 mb-3">Device Information</h4>
+                                    <div className="grid grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Browser</label>
+                                            <p className="mt-1 text-sm text-gray-900">{selectedLog.browser || 'Unknown'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Operating System</label>
+                                            <p className="mt-1 text-sm text-gray-900">{selectedLog.os || 'Unknown'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Device Type</label>
+                                            <p className="mt-1 text-sm text-gray-900">{selectedLog.device || 'Unknown'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">User Agent</label>
-                                    <p className="text-xs text-gray-600 font-mono bg-gray-50 p-2 rounded">{selectedLog.userAgent}</p>
+                                    <p className="text-xs text-gray-600 font-mono bg-gray-50 p-2 rounded break-all">{selectedLog.userAgent || 'Unknown'}</p>
                                 </div>
                             </div>
                         </div>
