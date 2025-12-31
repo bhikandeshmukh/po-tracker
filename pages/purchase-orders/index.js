@@ -35,6 +35,7 @@ const statusColors = {
     completed: 'bg-purple-100 text-purple-800',
     fully_shipped: 'bg-purple-100 text-purple-800',
     cancelled: 'bg-red-100 text-red-800',
+    closed: 'bg-red-100 text-red-800',
 };
 
 const statusIcons = {
@@ -42,8 +43,11 @@ const statusIcons = {
     submitted: Clock,
     approved: CheckCircle,
     partial_sent: Package,
+    partial_completed: Package,
     fully_shipped: CheckCircle,
+    completed: CheckCircle,
     cancelled: XCircle,
+    closed: XCircle,
 };
 
 export default function PurchaseOrders() {
@@ -240,6 +244,7 @@ export default function PurchaseOrders() {
                             <option value="partial_sent">Partial Sent</option>
                             <option value="partial_completed">Partial Completed</option>
                             <option value="completed">Completed</option>
+                            <option value="closed">Closed</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
                         {orders.length > 0 && (
@@ -376,6 +381,8 @@ export default function PurchaseOrders() {
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {orders.map((order) => {
                                             const StatusIcon = statusIcons[order.status] || Clock;
+                                            const statusColor = statusColors[order.status] || 'bg-gray-100 text-gray-800';
+                                            
                                             return (
                                                 <tr key={order.poId} className="hover:bg-gray-50 transition">
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -414,7 +421,7 @@ export default function PurchaseOrders() {
                                                     </td>
 
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
+                                                        <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
                                                             <StatusIcon className="w-3 h-3" />
                                                             <span className="capitalize">{order.status.replace('_', ' ')}</span>
                                                         </span>

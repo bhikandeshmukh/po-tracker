@@ -131,21 +131,33 @@ async function getPurchaseOrders(req, res, user) {
 
         const snapshot = await query.get();
 
+        /** @type {any[]} */
         let purchaseOrders = snapshot.docs.map(doc => {
             const data = doc.data();
+            const poDate = data.poDate?.toDate?.()?.toISOString() || data.poDate;
+            const expectedDeliveryDate = data.expectedDeliveryDate?.toDate?.()?.toISOString() || data.expectedDeliveryDate;
+            const createdAt = data.createdAt?.toDate?.()?.toISOString() || data.createdAt;
+            const updatedAt = data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt;
+            const approvedAt = data.approvedAt?.toDate?.()?.toISOString() || data.approvedAt;
+            const cancelledAt = data.cancelledAt?.toDate?.()?.toISOString() || data.cancelledAt;
+            
             return {
-                id: doc.id,
-                poId: doc.id, // Consistent with detail endpoint
                 ...data,
-                // Convert Firestore timestamps to ISO strings
-                poDate: data.poDate?.toDate?.()?.toISOString() || data.poDate,
-                expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.()?.toISOString() || data.expectedDeliveryDate,
-                createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-                updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
-                approvedAt: data.approvedAt?.toDate?.()?.toISOString() || data.approvedAt,
-                cancelledAt: data.cancelledAt?.toDate?.()?.toISOString() || data.cancelledAt
+                id: doc.id,
+                poId: doc.id,
+                poDate,
+                expectedDeliveryDate,
+                createdAt,
+                updatedAt,
+                approvedAt,
+                cancelledAt
             };
         });
+
+        // Auto-update PO statuses based on date and quantity (runs in background)
+        autoUpdatePOStatuses(purchaseOrders).catch(err => 
+            console.error('Auto-update status error:', err)
+        );
 
         // Apply additional filters in memory (FIXED: No composite index needed)
         if (filters.length > 1) {
@@ -198,6 +210,62 @@ async function getPurchaseOrders(req, res, user) {
     } catch (error) {
         console.error('Get POs Error:', error);
         throw error;
+    }
+}
+
+// Auto-update PO statuses based on date and quantity
+async function autoUpdatePOStatuses(purchaseOrders) {
+    const today = new Date();
+    const batch = db.batch();
+    let updateCount = 0;
+
+    for (const po of purchaseOrders) {
+        // Skip cancelled POs
+        if (po.status === 'cancelled') continue;
+
+        const poDate = new Date(po.poDate);
+        const daysDiff = Math.floor((today.getTime() - poDate.getTime()) / (1000 * 60 * 60 * 24));
+        const totalQty = po.totalQuantity || 0;
+        const sentQty = po.shippedQuantity || 0;
+
+        let newStatus = null;
+
+        // If 45+ days old and 0 qty sent → closed
+        if (daysDiff >= 45 && sentQty === 0 && po.status !== 'closed') {
+            newStatus = 'closed';
+        }
+        // If partial qty sent (sent > 0 but sent < total) → partial_completed
+        else if (sentQty > 0 && sentQty < totalQty && po.status !== 'partial_completed' && po.status !== 'completed') {
+            newStatus = 'partial_completed';
+        }
+        // If all qty sent → completed
+        else if (sentQty >= totalQty && totalQty > 0 && po.status !== 'completed') {
+            newStatus = 'completed';
+        }
+
+        // Update if status changed
+        if (newStatus && newStatus !== po.status) {
+            const poRef = db.collection('purchaseOrders').doc(po.id);
+            batch.update(poRef, {
+                status: newStatus,
+                statusUpdatedAt: new Date(),
+                statusUpdatedReason: newStatus === 'closed' 
+                    ? '45+ days with no shipment' 
+                    : newStatus === 'partial_completed'
+                    ? 'Partial quantity shipped'
+                    : 'All quantity shipped'
+            });
+            updateCount++;
+
+            // Update the PO object for immediate response
+            po.status = newStatus;
+        }
+    }
+
+    // Commit batch if there are updates
+    if (updateCount > 0) {
+        await batch.commit();
+        console.log(`Auto-updated ${updateCount} PO statuses`);
     }
 }
 
@@ -259,6 +327,7 @@ async function createPurchaseOrder(req, res, user) {
             });
         }
 
+        /** @type {any} */
         const { vendor, warehouse } = vendorValidation;
 
         // Prepare PO data
@@ -268,7 +337,7 @@ async function createPurchaseOrder(req, res, user) {
             vendorId: vendorId,
             vendorName: vendor.vendorName || vendor.name,
             vendorWarehouseId: vendorWarehouseId,
-            vendorWarehouseName: warehouse.warehouseName || warehouse.name || '',
+            vendorWarehouseName: warehouse?.warehouseName || warehouse?.name || '',
             status: 'draft',
             poDate: new Date(poDate),
             expectedDeliveryDate: new Date(expectedDeliveryDate),
