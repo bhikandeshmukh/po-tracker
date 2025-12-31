@@ -25,6 +25,7 @@ export default function Dashboard() {
     const { user } = useAuth();
     const [metrics, setMetrics] = useState(null);
     const [periodMetrics, setPeriodMetrics] = useState(null); // Metrics for selected period
+    const [periodChanges, setPeriodChanges] = useState(null); // Percentage changes vs previous period
     const [activities, setActivities] = useState([]);
     const [chartData, setChartData] = useState([]);
     const [period, setPeriod] = useState('30days');
@@ -70,6 +71,10 @@ export default function Dashboard() {
                 if (chartRes.totals) {
                     setPeriodMetrics(chartRes.totals);
                 }
+                // Set percentage changes
+                if (chartRes.changes) {
+                    setPeriodChanges(chartRes.changes);
+                }
             } else {
                 console.error('Chart fetch failed:', chartRes.error);
                 setChartData([]);
@@ -82,6 +87,22 @@ export default function Dashboard() {
             setRefreshing(false);
         }
     }, [loading, period]);
+
+    // Helper to format percentage change
+    const formatChange = (value) => {
+        if (value === undefined || value === null) return null;
+        const prefix = value >= 0 ? '+' : '';
+        return `${prefix}${value}%`;
+    };
+
+    // Helper to get trend direction
+    const getTrend = (value, invertForPending = false) => {
+        if (value === undefined || value === null) return 'up';
+        if (invertForPending) {
+            return value <= 0 ? 'up' : 'down'; // For pending, decrease is good
+        }
+        return value >= 0 ? 'up' : 'down';
+    };
 
     useEffect(() => {
         let refreshInterval;
@@ -166,24 +187,32 @@ export default function Dashboard() {
                     <StatCard
                         title="Total Order Qty"
                         value={periodMetrics?.orderQty ?? metrics?.totalOrderQty ?? 0}
+                        change={formatChange(periodChanges?.orderQtyChange)}
+                        trend={getTrend(periodChanges?.orderQtyChange)}
                         icon={Package}
                         color="blue"
                     />
                     <StatCard
                         title="Shipped Qty"
                         value={periodMetrics?.shippedQty ?? metrics?.totalShippedQty ?? 0}
+                        change={formatChange(periodChanges?.shippedQtyChange)}
+                        trend={getTrend(periodChanges?.shippedQtyChange)}
                         icon={Truck}
                         color="green"
                     />
                     <StatCard
                         title="Pending Qty"
                         value={periodMetrics?.pendingQty ?? metrics?.totalPendingQty ?? 0}
+                        change={formatChange(periodChanges?.pendingQtyChange)}
+                        trend={getTrend(periodChanges?.pendingQtyChange, true)}
                         icon={Clock}
                         color="yellow"
                     />
                     <StatCard
                         title="Delivered Qty"
                         value={periodMetrics?.deliveredQty ?? metrics?.totalDeliveredQty ?? 0}
+                        change={formatChange(periodChanges?.deliveredQtyChange)}
+                        trend={getTrend(periodChanges?.deliveredQtyChange)}
                         icon={Package}
                         color="purple"
                     />

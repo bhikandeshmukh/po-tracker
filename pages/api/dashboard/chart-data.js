@@ -28,7 +28,9 @@ export default async function handler(req, res) {
         return res.status(200).json({
             success: true,
             data: chartData.chartData,
-            totals: chartData.totals
+            totals: chartData.totals,
+            changes: chartData.changes,
+            prevTotals: chartData.prevTotals
         });
     } catch (error) {
         console.error('API Error:', error);
@@ -212,5 +214,85 @@ async function getQuantityChartData(period) {
     
     totals.pendingQty = Math.max(0, totals.orderQty - totals.shippedQty);
     
-    return { chartData, totals };
+    // Calculate previous period totals for comparison
+    const prevTotals = await getPreviousPeriodTotals(period, posSnapshot, shipmentsSnapshot);
+    
+    // Calculate percentage changes
+    const changes = {
+        orderQtyChange: calculatePercentChange(totals.orderQty, prevTotals.orderQty),
+        shippedQtyChange: calculatePercentChange(totals.shippedQty, prevTotals.shippedQty),
+        pendingQtyChange: calculatePercentChange(totals.pendingQty, prevTotals.pendingQty),
+        deliveredQtyChange: calculatePercentChange(totals.deliveredQty, prevTotals.deliveredQty)
+    };
+    
+    return { chartData, totals, changes, prevTotals };
+}
+
+function calculatePercentChange(current, previous) {
+    if (previous === 0) {
+        return current > 0 ? 100 : 0;
+    }
+    return Math.round(((current - previous) / previous) * 100 * 10) / 10;
+}
+
+async function getPreviousPeriodTotals(period, posSnapshot, shipmentsSnapshot) {
+    const now = new Date();
+    let prevTotals = { orderQty: 0, shippedQty: 0, deliveredQty: 0, pendingQty: 0 };
+    let prevStartDate, prevEndDate;
+    
+    if (period === '30days') {
+        // Previous 30 days (day 31-60 ago)
+        prevEndDate = new Date(now);
+        prevEndDate.setDate(prevEndDate.getDate() - 30);
+        prevEndDate.setHours(23, 59, 59, 999);
+        
+        prevStartDate = new Date(now);
+        prevStartDate.setDate(prevStartDate.getDate() - 59);
+        prevStartDate.setHours(0, 0, 0, 0);
+    } else if (period === '6months') {
+        // Previous 6 months
+        prevEndDate = new Date(now.getFullYear(), now.getMonth() - 6, 0);
+        prevStartDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+    } else if (period === '12months') {
+        // Previous 12 months
+        prevEndDate = new Date(now.getFullYear(), now.getMonth() - 12, 0);
+        prevStartDate = new Date(now.getFullYear(), now.getMonth() - 24, 1);
+    } else if (period === 'thisYear') {
+        // Last year
+        prevStartDate = new Date(now.getFullYear() - 1, 0, 1);
+        prevEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+    }
+    
+    // Process POs for previous period
+    posSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'cancelled') return;
+        
+        let poDate = data.poDate;
+        if (poDate?.toDate) poDate = poDate.toDate();
+        else if (typeof poDate === 'string') poDate = new Date(poDate);
+        
+        if (poDate && !isNaN(poDate.getTime()) && poDate >= prevStartDate && poDate <= prevEndDate) {
+            prevTotals.orderQty += data.totalQuantity || 0;
+            prevTotals.shippedQty += data.shippedQuantity || 0;
+        }
+    });
+    
+    // Process Shipments for previous period delivered qty
+    shipmentsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'delivered') {
+            let deliveryDate = data.deliveryDate || data.shipmentDate;
+            if (deliveryDate?.toDate) deliveryDate = deliveryDate.toDate();
+            else if (typeof deliveryDate === 'string') deliveryDate = new Date(deliveryDate);
+            
+            if (deliveryDate && !isNaN(deliveryDate.getTime()) && deliveryDate >= prevStartDate && deliveryDate <= prevEndDate) {
+                prevTotals.deliveredQty += (data.deliveredQuantity !== undefined ? data.deliveredQuantity : data.totalQuantity) || 0;
+            }
+        }
+    });
+    
+    prevTotals.pendingQty = Math.max(0, prevTotals.orderQty - prevTotals.shippedQty);
+    
+    return prevTotals;
 }
