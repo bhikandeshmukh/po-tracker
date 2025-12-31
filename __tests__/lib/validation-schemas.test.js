@@ -116,7 +116,7 @@ describe('Validation Schemas', () => {
         });
 
         test('should allow valid transitions from approved', () => {
-            expect(validateStatusTransition('approved', 'partially_shipped').valid).toBe(true);
+            expect(validateStatusTransition('approved', 'partial_sent').valid).toBe(true);
             expect(validateStatusTransition('approved', 'cancelled').valid).toBe(true);
         });
 
@@ -191,14 +191,24 @@ describe('Validation Schemas', () => {
             expect(STATUS_TRANSITIONS).toHaveProperty('draft');
             expect(STATUS_TRANSITIONS).toHaveProperty('submitted');
             expect(STATUS_TRANSITIONS).toHaveProperty('approved');
-            expect(STATUS_TRANSITIONS).toHaveProperty('partially_shipped');
+            expect(STATUS_TRANSITIONS).toHaveProperty('partial_sent');
             expect(STATUS_TRANSITIONS).toHaveProperty('fully_shipped');
             expect(STATUS_TRANSITIONS).toHaveProperty('cancelled');
+            expect(STATUS_TRANSITIONS).toHaveProperty('pending');
+            expect(STATUS_TRANSITIONS).toHaveProperty('completed');
+            expect(STATUS_TRANSITIONS).toHaveProperty('partial_completed');
+            expect(STATUS_TRANSITIONS).toHaveProperty('expired');
         });
 
         test('terminal states should have no transitions', () => {
-            expect(STATUS_TRANSITIONS.fully_shipped).toEqual([]);
+            expect(STATUS_TRANSITIONS.completed).toEqual([]);
+            expect(STATUS_TRANSITIONS.partial_completed).toEqual([]);
+            expect(STATUS_TRANSITIONS.expired).toEqual([]);
             expect(STATUS_TRANSITIONS.cancelled).toEqual([]);
+        });
+
+        test('fully_shipped can transition to completed', () => {
+            expect(STATUS_TRANSITIONS.fully_shipped).toContain('completed');
         });
     });
 });

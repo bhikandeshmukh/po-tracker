@@ -107,13 +107,14 @@ async function updateUser(req, res, user, userId) {
     // Log the update action
     await logAction(
         'UPDATE',
-        authUser.userId,
+        user.uid,
         'USER',
         userId,
         { before: beforeState, after: afterState },
         {
             ipAddress: getIpAddress(req),
-            userAgent: getUserAgent(req)
+            userAgent: getUserAgent(req),
+            userRole: user.role
         }
     );
 
@@ -159,13 +160,14 @@ async function deleteUser(req, res, userId, authUser) {
     // Log the delete action
     await logAction(
         'DELETE',
-        authUser.userId,
+        authUser.uid,
         'USER',
         userId,
         { before: beforeState, after: null },
         {
             ipAddress: getIpAddress(req),
-            userAgent: getUserAgent(req)
+            userAgent: getUserAgent(req),
+            userRole: authUser.role
         }
     );
 

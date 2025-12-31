@@ -4,6 +4,7 @@
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
 import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -149,6 +150,9 @@ async function createTransporter(req, res, user) {
         timestamp: new Date(),
         expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
     });
+
+    // Update metrics
+    await incrementMetric('totalTransporters', 1);
 
     return res.status(201).json({
         success: true,

@@ -3,6 +3,8 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -25,7 +27,7 @@ export default async function handler(req, res) {
                     error: { code: 'FORBIDDEN', message: 'Manager access required' }
                 });
             }
-            return await updateTransporter(req, res, transporterId);
+            return await updateTransporter(req, res, transporterId, user);
         } else if (req.method === 'DELETE') {
             if (!await requireRole(user, ['admin', 'super_admin'])) {
                 return res.status(403).json({
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
                     error: { code: 'FORBIDDEN', message: 'Admin access required' }
                 });
             }
-            return await deleteTransporter(req, res, transporterId);
+            return await deleteTransporter(req, res, transporterId, user);
         } else {
             return res.status(405).json({
                 success: false,
@@ -65,7 +67,7 @@ async function getTransporter(req, res, transporterId) {
     });
 }
 
-async function updateTransporter(req, res, transporterId) {
+async function updateTransporter(req, res, transporterId, user) {
     const transporterDoc = await db.collection('transporters').doc(transporterId).get();
     if (!transporterDoc.exists) {
         return res.status(404).json({
@@ -74,11 +76,27 @@ async function updateTransporter(req, res, transporterId) {
         });
     }
 
-    const updateData = { ...req.body, updatedAt: new Date() };
+    const beforeState = transporterDoc.data();
+    const updateData = { ...req.body, updatedAt: new Date(), updatedBy: user.uid };
     delete updateData.transporterId;
     delete updateData.createdAt;
 
     await db.collection('transporters').doc(transporterId).update(updateData);
+
+    // Create audit log
+    await logAction(
+        'UPDATE',
+        user.uid,
+        'TRANSPORTER',
+        transporterId,
+        { before: { isActive: beforeState.isActive }, after: { isActive: updateData.isActive ?? beforeState.isActive } },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { transporterName: beforeState.transporterName }
+        }
+    );
 
     return res.status(200).json({
         success: true,
@@ -86,7 +104,7 @@ async function updateTransporter(req, res, transporterId) {
     });
 }
 
-async function deleteTransporter(req, res, transporterId) {
+async function deleteTransporter(req, res, transporterId, user) {
     const transporterDoc = await db.collection('transporters').doc(transporterId).get();
     if (!transporterDoc.exists) {
         return res.status(404).json({
@@ -95,7 +113,27 @@ async function deleteTransporter(req, res, transporterId) {
         });
     }
 
+    const transporterData = transporterDoc.data();
+
     await db.collection('transporters').doc(transporterId).delete();
+
+    // Create audit log
+    await logAction(
+        'DELETE',
+        user.uid,
+        'TRANSPORTER',
+        transporterId,
+        { before: transporterData },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { transporterName: transporterData.transporterName }
+        }
+    );
+
+    // Update metrics
+    await incrementMetric('totalTransporters', -1);
 
     return res.status(200).json({
         success: true,

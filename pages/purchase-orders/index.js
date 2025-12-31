@@ -33,7 +33,6 @@ const statusColors = {
     partial_sent: 'bg-yellow-100 text-yellow-800',
     partial_completed: 'bg-orange-100 text-orange-800',
     completed: 'bg-purple-100 text-purple-800',
-    partially_shipped: 'bg-yellow-100 text-yellow-800',
     fully_shipped: 'bg-purple-100 text-purple-800',
     cancelled: 'bg-red-100 text-red-800',
 };
@@ -42,7 +41,7 @@ const statusIcons = {
     draft: Clock,
     submitted: Clock,
     approved: CheckCircle,
-    partially_shipped: Package,
+    partial_sent: Package,
     fully_shipped: CheckCircle,
     cancelled: XCircle,
 };
@@ -209,7 +208,8 @@ export default function PurchaseOrders() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        setPage(1);
+        setPrevCursors([]);
+        setNextCursor(null);
         fetchOrders();
     };
 

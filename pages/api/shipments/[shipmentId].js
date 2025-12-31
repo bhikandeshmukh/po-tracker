@@ -68,7 +68,8 @@ async function getShipment(req, res, shipmentId) {
         shipmentDate: data.shipmentDate?.toDate?.()?.toISOString() || data.shipmentDate,
         expectedDeliveryDate: data.expectedDeliveryDate?.toDate?.()?.toISOString() || data.expectedDeliveryDate,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+        items: []
     };
 
     // Get items
@@ -247,12 +248,13 @@ async function updateShipment(req, res, shipmentId, user) {
         });
     }
 
+    const shipmentData = shipmentDoc.data();
     const { newShipmentId, ...otherUpdates } = req.body;
 
     // If shipment ID is being changed
     if (newShipmentId && newShipmentId !== shipmentId) {
-        const shipmentData = shipmentDoc.data();
         const batch = db.batch();
+        const shipmentDataForRename = shipmentData;
 
         // 1. Update shipment document fields
         const shipmentRef = db.collection('shipments').doc(shipmentId);
@@ -369,7 +371,6 @@ async function updateShipment(req, res, shipmentId, user) {
 
         // If status is updated to delivered, update PO delivered quantity
         if (updateData.status === 'delivered' && updateData.deliveredQuantity !== undefined) {
-            const shipmentData = shipmentDoc.data();
             if (shipmentData.poId) {
                 try {
                     const poRef = db.collection('purchaseOrders').doc(shipmentData.poId);
@@ -392,7 +393,6 @@ async function updateShipment(req, res, shipmentId, user) {
         }
 
         // Sync all fields to linked appointment
-        const shipmentData = shipmentDoc.data();
         const appointmentId = shipmentData.appointmentId || shipmentId;
         const appointmentDoc = await db.collection('appointments').doc(appointmentId).get();
 

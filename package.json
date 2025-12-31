@@ -35,13 +35,13 @@
     "recharts": "^3.5.0",
     "supertest": "^7.1.4",
     "winston": "^3.18.3",
-    "xlsx": "^0.18.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
+    "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "autoprefixer": "^10.4.22",
     "babel-jest": "^29.7.0",
@@ -55,6 +55,6 @@
     "tailwindcss": "^4.1.17"
   },
   "engines": {
-    "node": "24.x"
+    "node": ">=22.x"
   }
 }

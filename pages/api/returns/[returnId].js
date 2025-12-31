@@ -3,6 +3,7 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -79,11 +80,50 @@ async function updateReturn(req, res, returnId, user) {
         });
     }
 
-    const updateData = { ...req.body, updatedAt: new Date() };
+    const beforeState = returnDoc.data();
+    const updateData = { ...req.body, updatedAt: new Date(), updatedBy: user.uid };
     delete updateData.returnId;
     delete updateData.createdAt;
 
     await db.collection('returnOrders').doc(returnId).update(updateData);
+
+    // Create audit log
+    await logAction(
+        'UPDATE',
+        user.uid,
+        'RETURN',
+        returnId,
+        { before: { status: beforeState.status }, after: { status: updateData.status || beforeState.status } },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { poNumber: beforeState.poNumber }
+        }
+    );
+
+    // If status changed, create recent activity
+    if (updateData.status && updateData.status !== beforeState.status) {
+        const activityId = `RETURN_${updateData.status.toUpperCase()}_${returnId}`;
+        await db.collection('recentActivities').doc(activityId).set({
+            activityId,
+            type: `RETURN_${updateData.status.toUpperCase()}`,
+            title: `Return ${updateData.status.replace('_', ' ')}`,
+            description: `${returnId} status updated to ${updateData.status}`,
+            entityType: 'RETURN',
+            entityId: returnId,
+            entityNumber: returnId,
+            userId: user.uid,
+            userName: user.name || user.email,
+            metadata: {
+                status: updateData.status,
+                previousStatus: beforeState.status,
+                poNumber: beforeState.poNumber
+            },
+            timestamp: new Date(),
+            expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+        });
+    }
 
     return res.status(200).json({
         success: true,

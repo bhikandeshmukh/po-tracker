@@ -3,6 +3,8 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -34,39 +36,58 @@ export default async function handler(req, res) {
 }
 
 async function getReturns(req, res) {
-    const { status, poId, vendorId, limit = 10, page = 1 } = req.query;
+    const { status, poId, vendorId, limit = 10, lastDocId } = req.query;
 
-    let query = db.collection('returnOrders');
+    const limitNum = Math.min(parseInt(limit, 10) || 10, 100);
+    let query = db.collection('returnOrders').orderBy('returnDate', 'desc');
 
+    // Apply single filter to avoid composite index requirement
     if (status) query = query.where('status', '==', status);
-    if (poId) query = query.where('poId', '==', poId);
-    if (vendorId) query = query.where('vendorId', '==', vendorId);
 
-    query = query.orderBy('returnDate', 'desc');
+    // Cursor-based pagination
+    if (lastDocId) {
+        const lastDoc = await db.collection('returnOrders').doc(lastDocId).get();
+        if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+        }
+    }
 
-    const totalSnapshot = await query.get();
-    const total = totalSnapshot.size;
-
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-
-    query = query.limit(limitNum).offset(skip);
+    query = query.limit(limitNum + 1);
     const snapshot = await query.get();
 
-    const returns = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    const hasMore = snapshot.docs.length > limitNum;
+    const docs = hasMore ? snapshot.docs.slice(0, limitNum) : snapshot.docs;
+
+    let returns = docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            returnId: doc.id,
+            poId: data.poId || '',
+            vendorId: data.vendorId || '',
+            ...data,
+            returnDate: data.returnDate?.toDate?.()?.toISOString() || data.returnDate,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        };
+    });
+
+    // Apply additional filters in memory
+    if (poId) returns = returns.filter(r => r.poId === poId);
+    if (vendorId) returns = returns.filter(r => r.vendorId === vendorId);
+
+    const nextCursor = hasMore && returns.length > 0
+        ? returns[returns.length - 1].id
+        : null;
 
     return res.status(200).json({
         success: true,
         data: returns,
         pagination: {
-            page: pageNum,
             limit: limitNum,
-            total,
-            totalPages: Math.ceil(total / limitNum)
+            hasMore,
+            nextCursor,
+            count: returns.length
         }
     });
 }
@@ -110,6 +131,15 @@ async function createReturn(req, res, user) {
 
     const poData = poDoc.data();
 
+    // Get transporter details if provided
+    let transporterName = '';
+    if (transporterId) {
+        const transporterDoc = await db.collection('transporters').doc(transporterId).get();
+        if (transporterDoc.exists) {
+            transporterName = transporterDoc.data().transporterName || '';
+        }
+    }
+
     // Calculate totals - Quantity only
     let totalQuantity = 0;
 
@@ -137,6 +167,7 @@ async function createReturn(req, res, user) {
         vendorName: poData.vendorName,
         vendorWarehouseId: poData.vendorWarehouseId,
         transporterId: transporterId || '',
+        transporterName: transporterName,
         status: 'created',
         returnType,
         returnReason,
@@ -161,6 +192,43 @@ async function createReturn(req, res, user) {
         batch.set(itemRef, item);
     });
     await batch.commit();
+
+    // Create audit log
+    await logAction(
+        'CREATE',
+        user.uid,
+        'RETURN',
+        returnNumber,
+        { after: { returnNumber, poNumber: poData.poNumber, totalQuantity, returnType, returnReason } },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { vendorName: poData.vendorName, shipmentId: shipmentId || '' }
+        }
+    );
+
+    // Create recent activity
+    const activityId = `RETURN_CREATED_${returnNumber}`;
+    await db.collection('recentActivities').doc(activityId).set({
+        activityId,
+        type: 'RETURN_CREATED',
+        title: 'Return Order Created',
+        description: `${returnNumber} created for PO ${poData.poNumber}`,
+        entityType: 'RETURN',
+        entityId: returnNumber,
+        entityNumber: returnNumber,
+        userId: user.uid,
+        userName: user.name || user.email,
+        metadata: {
+            poNumber: poData.poNumber,
+            totalQuantity,
+            returnType,
+            returnReason
+        },
+        timestamp: new Date(),
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    });
 
     return res.status(201).json({
         success: true,

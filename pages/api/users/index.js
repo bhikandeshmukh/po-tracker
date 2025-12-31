@@ -40,38 +40,54 @@ export default async function handler(req, res) {
 }
 
 async function getUsers(req, res, user) {
-    const { role, isActive, limit = 10, page = 1 } = req.query;
+    const { role, isActive, limit = 10, lastDocId } = req.query;
 
-    let query = db.collection('users');
+    const limitNum = Math.min(parseInt(limit, 10) || 10, 100);
+    let query = db.collection('users').orderBy('createdAt', 'desc');
 
     if (role) query = query.where('role', '==', role);
-    if (isActive !== undefined) query = query.where('isActive', '==', isActive === 'true');
 
-    const totalSnapshot = await query.get();
-    const total = totalSnapshot.size;
+    // Cursor-based pagination
+    if (lastDocId) {
+        const lastDoc = await db.collection('users').doc(lastDocId).get();
+        if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+        }
+    }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-
-    query = query.limit(limitNum).offset(skip);
+    query = query.limit(limitNum + 1);
     const snapshot = await query.get();
 
-    const users = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    const hasMore = snapshot.docs.length > limitNum;
+    const docs = hasMore ? snapshot.docs.slice(0, limitNum) : snapshot.docs;
+
+    let users = docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        };
+    });
+
+    // Apply isActive filter in memory
+    if (isActive !== undefined) {
+        users = users.filter(u => u.isActive === (isActive === 'true'));
+    }
+
+    const nextCursor = hasMore && users.length > 0
+        ? users[users.length - 1].id
+        : null;
 
     return res.status(200).json({
         success: true,
         data: users,
         pagination: {
-            page: pageNum,
             limit: limitNum,
-            total,
-            totalPages: Math.ceil(total / limitNum),
-            hasNextPage: skip + limitNum < total,
-            hasPreviousPage: pageNum > 1
+            hasMore,
+            nextCursor,
+            count: users.length
         }
     });
 }

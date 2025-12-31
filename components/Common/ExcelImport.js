@@ -1,8 +1,9 @@
 // components/Common/ExcelImport.js
 // Reusable Excel import component
+// Migrated from xlsx to ExcelJS for security
 
 import { useState } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Upload, Download, FileSpreadsheet, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function ExcelImport({ 
@@ -32,27 +33,67 @@ export default function ExcelImport({
         parseExcel(selectedFile);
     };
 
-    const parseExcel = (file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                
-                if (jsonData.length === 0) {
-                    setError('Excel file is empty');
-                    return;
-                }
-
-                setPreview(jsonData.slice(0, 5)); // Show first 5 rows
-                setError('');
-            } catch (err) {
-                setError('Failed to parse Excel file: ' + err.message);
+    const parseExcel = async (file) => {
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(buffer);
+            
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
+                setError('Excel file is empty');
+                return;
             }
-        };
-        reader.readAsArrayBuffer(file);
+
+            const jsonData = worksheetToJSON(worksheet);
+            
+            if (jsonData.length === 0) {
+                setError('Excel file is empty');
+                return;
+            }
+
+            setPreview(jsonData.slice(0, 5)); // Show first 5 rows
+            setError('');
+        } catch (err) {
+            setError('Failed to parse Excel file: ' + err.message);
+        }
+    };
+
+    const worksheetToJSON = (worksheet) => {
+        const json = [];
+        const headers = [];
+
+        // Get headers from first row
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell((cell, colNumber) => {
+            headers[colNumber] = cell.value?.toString() || `Column${colNumber}`;
+        });
+
+        // Get data rows
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+
+            const rowData = {};
+            row.eachCell((cell, colNumber) => {
+                const header = headers[colNumber];
+                if (header) {
+                    let value = cell.value;
+                    if (value && typeof value === 'object') {
+                        if (value.result !== undefined) value = value.result;
+                        else if (value.text) value = value.text;
+                        else if (value instanceof Date) value = value.toISOString();
+                        else value = String(value);
+                    }
+                    rowData[header] = value ?? '';
+                }
+            });
+
+            if (Object.keys(rowData).length > 0) {
+                json.push(rowData);
+            }
+        });
+
+        return json;
     };
 
     const handleImport = async () => {
@@ -66,45 +107,70 @@ export default function ExcelImport({
         setSuccess('');
 
         try {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            const buffer = await file.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(buffer);
+            
+            const worksheet = workbook.worksheets[0];
+            const jsonData = worksheetToJSON(worksheet);
 
-                    // Call the import handler
-                    const result = await onImport(jsonData);
-                    
-                    if (result.success) {
-                        setSuccess(`Successfully imported ${jsonData.length} records!`);
-                        setTimeout(() => {
-                            setShowModal(false);
-                            setFile(null);
-                            setPreview([]);
-                            setSuccess('');
-                        }, 2000);
-                    } else {
-                        setError(result.error || 'Import failed');
-                    }
-                } catch (err) {
-                    setError('Import failed: ' + err.message);
-                }
-                setImporting(false);
-            };
-            reader.readAsArrayBuffer(file);
+            const result = await onImport(jsonData);
+            
+            if (result.success) {
+                setSuccess(`Successfully imported ${jsonData.length} records!`);
+                setTimeout(() => {
+                    setShowModal(false);
+                    setFile(null);
+                    setPreview([]);
+                    setSuccess('');
+                }, 2000);
+            } else {
+                setError(result.error || 'Import failed');
+            }
         } catch (err) {
             setError('Import failed: ' + err.message);
-            setImporting(false);
         }
+        setImporting(false);
     };
 
-    const downloadTemplate = () => {
-        const ws = XLSX.utils.json_to_sheet(sampleData.length > 0 ? sampleData : [templateColumns]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Template');
-        XLSX.writeFile(wb, `${moduleName}_Import_Template.xlsx`);
+    const downloadTemplate = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Template');
+
+            const data = sampleData.length > 0 ? sampleData : [templateColumns];
+            
+            if (data.length > 0) {
+                const headers = Object.keys(data[0]);
+                worksheet.columns = headers.map(header => ({
+                    header,
+                    key: header,
+                    width: 20
+                }));
+
+                worksheet.getRow(1).font = { bold: true };
+                worksheet.getRow(1).fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFE0E0E0' }
+                };
+
+                if (sampleData.length > 0) {
+                    sampleData.forEach(row => worksheet.addRow(row));
+                }
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${moduleName}_Import_Template.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            setError('Failed to download template: ' + err.message);
+        }
     };
 
     return (

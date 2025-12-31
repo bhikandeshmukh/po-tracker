@@ -254,7 +254,7 @@ vendors/{vendorId}/warehouses/{warehouseId}
   vendorName: string,
   vendorWarehouseId: string,
   vendorWarehouseName: string,
-  status: "draft" | "submitted" | "approved" | "partially_shipped" | "fully_shipped" | "cancelled",
+  status: "draft" | "submitted" | "approved" | "partial_sent" | "fully_shipped" | "partial_completed" | "completed" | "cancelled",
   poDate: timestamp,
   expectedDeliveryDate: timestamp,
   totalAmount: number,
@@ -1022,7 +1022,7 @@ activityLogId = "PO-2024-0001" // Same as PO ID
 ## Status Values
 
 **PO Status:**
-- `draft`, `submitted`, `approved`, `partially_shipped`, `fully_shipped`, `cancelled`
+- `draft`, `submitted`, `approved`, `partial_sent`, `fully_shipped`, `partial_completed`, `completed`, `cancelled`
 
 **Shipment Status:**
 - `created`, `dispatched`, `in_transit`, `delivered`, `cancelled`

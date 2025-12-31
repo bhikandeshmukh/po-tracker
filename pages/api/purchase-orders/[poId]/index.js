@@ -14,8 +14,9 @@ import { standardRateLimiter } from '../../../../lib/rate-limiter';
 import { incrementMetric } from '../../../../lib/metrics-service';
 
 export default async function handler(req, res) {
+    let user = null;
     try {
-        const user = await verifyAuth(req);
+        user = await verifyAuth(req);
         if (!user) {
             return res.status(401).json({
                 success: false,

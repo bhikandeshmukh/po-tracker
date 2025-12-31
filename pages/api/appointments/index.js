@@ -21,10 +21,12 @@ export default async function handler(req, res) {
             });
         }
 
-        const { date, status, poId, limit = 10, page = 1 } = req.query;
+        const { date, status, poId, limit = 10, lastDocId } = req.query;
 
+        const limitNum = Math.min(parseInt(limit, 10) || 10, 100);
         let query = db.collection('appointments');
 
+        // Apply filters
         if (status) query = query.where('status', '==', status);
         if (poId) query = query.where('poId', '==', poId);
         if (date) {
@@ -37,20 +39,25 @@ export default async function handler(req, res) {
 
         query = query.orderBy('scheduledDate', 'asc');
 
-        const totalSnapshot = await query.get();
-        const total = totalSnapshot.size;
+        // Cursor-based pagination
+        if (lastDocId) {
+            const lastDoc = await db.collection('appointments').doc(lastDocId).get();
+            if (lastDoc.exists) {
+                query = query.startAfter(lastDoc);
+            }
+        }
 
-        const pageNum = parseInt(page, 10) || 1;
-        const limitNum = parseInt(limit, 10) || 10;
-        const skip = (pageNum - 1) * limitNum;
-
-        query = query.limit(limitNum).offset(skip);
+        query = query.limit(limitNum + 1);
         const snapshot = await query.get();
 
-        const appointments = snapshot.docs.map(doc => {
+        const hasMore = snapshot.docs.length > limitNum;
+        const docs = hasMore ? snapshot.docs.slice(0, limitNum) : snapshot.docs;
+
+        const appointments = docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
+                appointmentId: doc.id,
                 ...data,
                 scheduledDate: data.scheduledDate?.toDate?.()?.toISOString() || data.scheduledDate,
                 createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
@@ -58,14 +65,18 @@ export default async function handler(req, res) {
             };
         });
 
+        const nextCursor = hasMore && appointments.length > 0
+            ? appointments[appointments.length - 1].id
+            : null;
+
         return res.status(200).json({
             success: true,
             data: appointments,
             pagination: {
-                page: pageNum,
                 limit: limitNum,
-                total,
-                totalPages: Math.ceil(total / limitNum)
+                hasMore,
+                nextCursor,
+                count: appointments.length
             }
         });
     } catch (error) {

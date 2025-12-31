@@ -117,7 +117,7 @@ describe('Type Schemas', () => {
         test('should validate all status values', () => {
             const statuses = [
                 'draft', 'submitted', 'approved', 'partial_sent',
-                'partially_shipped', 'fully_shipped', 'partial_completed',
+                'fully_shipped', 'partial_completed',
                 'completed', 'cancelled'
             ];
             

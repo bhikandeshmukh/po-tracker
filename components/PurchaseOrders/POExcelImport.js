@@ -184,39 +184,11 @@ export default function POExcelImport({ onImport, onClose }) {
         try {
             setLoadingDropdowns(true);
 
-            // Fetch sample PO data
-            const response = await apiClient.getPurchaseOrders({ limit: 5 });
-            let templateData = [];
-
-            if (response.success && response.data) {
-                for (const po of response.data) {
-                    try {
-                        const itemsResponse = await apiClient.getPOItems(po.poId);
-                        const items = itemsResponse.success ? itemsResponse.data : [];
-                        
-                        items.forEach(item => {
-                            templateData.push({
-                                poNumber: po.poNumber,
-                                vendorId: po.vendorId,
-                                vendorWarehouseId: po.vendorWarehouseId,
-                                poDate: po.poDate?.split('T')[0] || '',
-                                expectedDeliveryDate: po.expectedDeliveryDate?.split('T')[0] || '',
-                                poQty: item.poQuantity || 0,
-                                qtySent: item.shippedQuantity || 0,
-                                qtyPending: item.pendingQuantity || item.poQuantity,
-                                deliveredQty: item.deliveredQuantity || 0
-                            });
-                        });
-                    } catch (err) {
-                        console.error('Error fetching items:', err);
-                    }
-                }
-            }
-
             // Use ExcelJS-based template generator with REAL dropdowns
+            // Pass empty array for templateData to create EMPTY template
             const { createPOTemplateWithValidation } = await import('../../lib/excel-template-with-validation');
             
-            await createPOTemplateWithValidation(vendors, warehouses, templateData);
+            await createPOTemplateWithValidation(vendors, warehouses, []); // Empty template - no existing data
 
         } catch (err) {
             console.error('Failed to create template:', err);

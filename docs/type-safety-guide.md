@@ -126,7 +126,7 @@ const PurchaseOrderSchema = z.object({
     vendorWarehouseName: z.string().optional(),
     status: z.enum([
         'draft', 'submitted', 'approved', 'partial_sent',
-        'partially_shipped', 'fully_shipped', 'partial_completed',
+        'fully_shipped', 'partial_completed',
         'completed', 'cancelled'
     ]).default('draft'),
     poDate: z.string().or(z.date()),

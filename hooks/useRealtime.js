@@ -1,7 +1,7 @@
 // hooks/useRealtime.js
 // Comprehensive real-time hooks for all entities
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { 
     collection, 
@@ -10,9 +10,7 @@ import {
     orderBy, 
     limit, 
     onSnapshot, 
-    doc,
-    startAfter,
-    getDocs
+    doc
 } from 'firebase/firestore';
 
 /**

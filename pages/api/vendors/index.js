@@ -3,6 +3,8 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
+import { incrementMetric } from '../../../lib/metrics-service';
 
 export default async function handler(req, res) {
     try {
@@ -40,42 +42,55 @@ export default async function handler(req, res) {
 }
 
 async function getVendors(req, res) {
-    const { isActive, search, limit = 10, page = 1 } = req.query;
+    const { isActive, search, limit = 10, lastDocId } = req.query;
 
-    let query = db.collection('vendors');
+    const limitNum = Math.min(parseInt(limit, 10) || 10, 100);
+    let query = db.collection('vendors').orderBy('vendorName', 'asc');
 
     if (isActive !== undefined) {
         query = query.where('isActive', '==', isActive === 'true');
     }
 
-    if (search) {
-        query = query.where('vendorName', '>=', search)
-            .where('vendorName', '<=', search + '\uf8ff');
+    // Cursor-based pagination
+    if (lastDocId) {
+        const lastDoc = await db.collection('vendors').doc(lastDocId).get();
+        if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+        }
     }
 
-    const totalSnapshot = await query.get();
-    const total = totalSnapshot.size;
-
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-
-    query = query.limit(limitNum).offset(skip);
+    query = query.limit(limitNum + 1);
     const snapshot = await query.get();
 
-    const vendors = snapshot.docs.map(doc => ({
+    const hasMore = snapshot.docs.length > limitNum;
+    const docs = hasMore ? snapshot.docs.slice(0, limitNum) : snapshot.docs;
+
+    let vendors = docs.map(doc => ({
         id: doc.id,
+        vendorId: doc.id,
         ...doc.data()
     }));
+
+    // Apply search filter in memory (prefix search doesn't work well with other filters)
+    if (search) {
+        const searchLower = search.toLowerCase();
+        vendors = vendors.filter(v => 
+            v.vendorName?.toLowerCase().includes(searchLower)
+        );
+    }
+
+    const nextCursor = hasMore && vendors.length > 0
+        ? vendors[vendors.length - 1].id
+        : null;
 
     return res.status(200).json({
         success: true,
         data: vendors,
         pagination: {
-            page: pageNum,
             limit: limitNum,
-            total,
-            totalPages: Math.ceil(total / limitNum)
+            hasMore,
+            nextCursor,
+            count: vendors.length
         }
     });
 }
@@ -120,6 +135,44 @@ async function createVendor(req, res, user) {
     };
 
     await db.collection('vendors').doc(vendorId).set(vendorData);
+
+    // Create audit log
+    await logAction(
+        'CREATE',
+        user.uid,
+        'VENDOR',
+        vendorId,
+        { after: vendorData },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role
+        }
+    );
+
+    // Create recent activity
+    const activityId = `VENDOR_CREATED_${vendorId}`;
+    await db.collection('recentActivities').doc(activityId).set({
+        activityId,
+        type: 'VENDOR_CREATED',
+        title: 'Vendor Created',
+        description: `${vendorName} registered as vendor`,
+        entityType: 'VENDOR',
+        entityId: vendorId,
+        entityNumber: vendorData.vendorCode,
+        userId: user.uid,
+        userName: user.name || user.email,
+        metadata: {
+            vendorName,
+            contactPerson
+        },
+        timestamp: new Date(),
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    });
+
+    // Update metrics
+    await incrementMetric('totalVendors', 1);
+    await incrementMetric('activeVendors', 1);
 
     return res.status(201).json({
         success: true,

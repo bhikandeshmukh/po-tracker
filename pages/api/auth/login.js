@@ -1,7 +1,7 @@
 // pages/api/auth/login.js
 // Login verification API - validates user after frontend Firebase authentication
 
-import { auth, db } from '../../../lib/firebase-admin';
+import { db } from '../../../lib/firebase-admin';
 import { verifyAuth } from '../../../lib/auth-middleware';
 import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
