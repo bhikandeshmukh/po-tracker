@@ -3,6 +3,7 @@
 
 import { auth, db } from '../../../lib/firebase-admin';
 import { verifyAuth } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -32,17 +33,19 @@ export default async function handler(req, res) {
         // Revoke all refresh tokens for the user
         await auth.revokeRefreshTokens(user.uid);
 
-        // Create audit log
-        await db.collection('auditLogs').doc(`user_logout_${user.uid}_${Date.now()}`).set({
-            logId: `user_logout_${user.uid}_${Date.now()}`,
-            entityType: 'User',
-            entityId: user.uid,
-            action: 'logout',
-            userId: user.uid,
-            userName: user.name,
-            userRole: user.role,
-            timestamp: new Date()
-        });
+        // Create audit log using centralized logger
+        await logAction(
+            'LOGOUT',
+            user.uid,
+            'USER',
+            user.uid,
+            {},
+            {
+                ipAddress: getIpAddress(req),
+                userAgent: getUserAgent(req),
+                userRole: user.role
+            }
+        );
 
         return res.status(200).json({
             success: true,

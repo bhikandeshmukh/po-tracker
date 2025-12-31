@@ -332,10 +332,10 @@ export default function AuditLogs() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {log.resourceType}
+                                                {log.entityType || log.resourceType}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                                {log.resourceId}
+                                                {log.entityId || log.resourceId}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
                                                 {log.ipAddress}
@@ -400,11 +400,11 @@ export default function AuditLogs() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Resource Type</label>
-                                        <p className="mt-1 text-sm text-gray-900">{selectedLog.resourceType}</p>
+                                        <p className="mt-1 text-sm text-gray-900">{selectedLog.entityType || selectedLog.resourceType}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Resource ID</label>
-                                        <p className="mt-1 text-sm text-gray-900 font-mono">{selectedLog.resourceId}</p>
+                                        <p className="mt-1 text-sm text-gray-900 font-mono">{selectedLog.entityId || selectedLog.resourceId}</p>
                                     </div>
                                 </div>
 

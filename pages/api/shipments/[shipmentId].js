@@ -4,6 +4,7 @@
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
 import { incrementMetric } from '../../../lib/metrics-service';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -212,23 +213,20 @@ async function deleteShipment(req, res, shipmentId, user) {
 
     await Promise.all(metricsToUpdate);
 
-    // Create audit log
-    await db.collection('auditLogs').add({
-        logId: `SHIPMENT_DELETED_${shipmentId}_${Date.now()}`,
-        entityType: 'SHIPMENT',
-        entityId: shipmentId,
-        entityNumber: shipmentId,
-        action: 'deleted',
-        userId: user.uid,
-        userName: user.name || user.email,
-        userRole: user.role || 'user',
-        timestamp: new Date(),
-        metadata: {
-            poId,
-            poNumber: shipmentData.poNumber,
-            totalQuantityReversed: totalQuantityToReverse
+    // Create audit log using centralized logger
+    await logAction(
+        'DELETE',
+        user.uid,
+        'SHIPMENT',
+        shipmentId,
+        { before: shipmentData },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { poId, poNumber: shipmentData.poNumber, totalQuantityReversed: totalQuantityToReverse }
         }
-    });
+    );
 
     return res.status(200).json({
         success: true,
@@ -313,21 +311,20 @@ async function updateShipment(req, res, shipmentId, user) {
         // Commit all changes
         await batch.commit();
 
-        // Create audit log for this rename operation
-        await db.collection('auditLogs').add({
-            logId: `SHIPMENT_RENAMED_${Date.now()}`,
-            entityType: 'SHIPMENT',
-            entityId: newShipmentId,
-            entityNumber: newShipmentId,
-            action: 'renamed',
-            changes: {
-                oldId: shipmentId,
-                newId: newShipmentId
-            },
-            performedBy: user.uid,
-            performedAt: new Date(),
-            createdAt: new Date()
-        });
+        // Create audit log for rename using centralized logger
+        await logAction(
+            'UPDATE',
+            user.uid,
+            'SHIPMENT',
+            newShipmentId,
+            { before: { shipmentId }, after: { shipmentId: newShipmentId } },
+            {
+                ipAddress: getIpAddress(req),
+                userAgent: getUserAgent(req),
+                userRole: user.role,
+                extra: { action: 'renamed', oldId: shipmentId, newId: newShipmentId }
+            }
+        );
 
         return res.status(200).json({
             success: true,

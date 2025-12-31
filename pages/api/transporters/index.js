@@ -3,6 +3,7 @@
 
 import { db } from '../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -115,25 +116,19 @@ async function createTransporter(req, res, user) {
 
     await db.collection('transporters').doc(transporterId).set(transporterData);
 
-    // Create audit log
-    const auditLogId = `TRANSPORTER_CREATED_${transporterId}_${Date.now()}`;
-    await db.collection('auditLogs').doc(auditLogId).set({
-        logId: auditLogId,
-        entityType: 'TRANSPORTER',
-        entityId: transporterId,
-        entityNumber: transporterData.transporterCode,
-        action: 'created',
-        userId: user.uid,
-        userName: user.name || user.email,
-        userRole: user.role || 'user',
-        timestamp: new Date(),
-        metadata: {
-            transporterName: transporterName,
-            contactPerson: contactPerson,
-            email: email,
-            phone: phone
+    // Create audit log using centralized logger
+    await logAction(
+        'CREATE',
+        user.uid,
+        'TRANSPORTER',
+        transporterId,
+        { after: transporterData },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role
         }
-    });
+    );
 
     // Create recent activity
     const activityId = `TRANSPORTER_CREATED_${transporterId}`;

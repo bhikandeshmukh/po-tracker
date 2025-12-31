@@ -127,22 +127,6 @@ export default async function handler(req, res) {
 
         await db.collection('users').doc(userId).set(userData);
 
-        // Create audit log
-        await db.collection('auditLogs').doc(`user_created_${userId}`).set({
-            logId: `user_created_${userId}`,
-            entityType: 'User',
-            entityId: userId,
-            action: 'created',
-            userId: userId,
-            userName: userData.name,
-            userRole: userData.role,
-            timestamp: new Date(),
-            metadata: {
-                email: email,
-                role: role
-            }
-        });
-
         // Create recent activity
         await db.collection('recentActivities').doc(`USER_CREATED_${userId}`).set({
             activityId: `USER_CREATED_${userId}`,

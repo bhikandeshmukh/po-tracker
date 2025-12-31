@@ -7,6 +7,7 @@ import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
 import { validateStatusTransition } from '../../../../lib/validation-schemas';
 import { addPOActivity } from '../../../../lib/po-helpers';
 import { incrementMetric } from '../../../../lib/metrics-service';
+import { logAction, getIpAddress, getUserAgent } from '../../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -91,21 +92,20 @@ export default async function handler(req, res) {
             ]);
         }
 
-        // Create audit log
-        await db.collection('auditLogs').doc().set({
-            entityType: 'PO',
-            entityId: poId,
-            entityNumber: result.poNumber,
-            action: 'approved',
-            userId: user.uid,
-            userName: user.name || user.email,
-            userRole: user.role || 'user',
-            timestamp: new Date(),
-            metadata: {
-                previousStatus: result.currentStatus,
-                notes: notes || ''
+        // Create audit log using centralized logger
+        await logAction(
+            'UPDATE',
+            user.uid,
+            'PO',
+            poId,
+            { before: { status: result.currentStatus }, after: { status: 'approved' } },
+            {
+                ipAddress: getIpAddress(req),
+                userAgent: getUserAgent(req),
+                userRole: user.role,
+                extra: { action: 'approved', poNumber: result.poNumber, notes: notes || '' }
             }
-        });
+        );
 
         return res.status(200).json({
             success: true,

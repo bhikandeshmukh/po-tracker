@@ -5,6 +5,7 @@ import { db } from '../../../lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { verifyAuth, requireRole } from '../../../lib/auth-middleware';
 import { incrementMetric } from '../../../lib/metrics-service';
+import { logAction, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -455,25 +456,20 @@ async function createShipment(req, res, user) {
         incrementMetric('pendingShipments', 1)
     ]);
 
-    // Create audit log with predictable ID
-    const auditLogId = `SHIPMENT_CREATED_${shipmentId}`;
-    await db.collection('auditLogs').doc(auditLogId).set({
-        logId: auditLogId,
-        entityType: 'SHIPMENT',
-        entityId: shipmentId,
-        entityNumber: shipmentId,
-        action: 'created',
-        userId: user.uid,
-        userName: user.name || user.email,
-        userRole: user.role || 'user',
-        timestamp: new Date(),
-        metadata: {
-            poNumber: poData.poNumber,
-            totalQuantity,
-            transporterName: transporterData.transporterName || '',
-            invoiceNumber: invoiceNumber || ''
+    // Create audit log using centralized logger
+    await logAction(
+        'CREATE',
+        user.uid,
+        'SHIPMENT',
+        shipmentId,
+        { after: { shipmentId, poNumber: poData.poNumber, totalQuantity, invoiceNumber } },
+        {
+            ipAddress: getIpAddress(req),
+            userAgent: getUserAgent(req),
+            userRole: user.role,
+            extra: { transporterName: transporterData.transporterName || '' }
         }
-    });
+    );
 
     // Create recent activity with predictable ID
     const recentActivityId = `SHIPMENT_CREATED_${shipmentId}`;

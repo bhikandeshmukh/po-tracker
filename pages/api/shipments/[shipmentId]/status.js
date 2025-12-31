@@ -4,6 +4,7 @@
 import { db } from '../../../../lib/firebase-admin';
 import { verifyAuth, requireRole } from '../../../../lib/auth-middleware';
 import { incrementMetric } from '../../../../lib/metrics-service';
+import { logAction, getIpAddress, getUserAgent } from '../../../../lib/audit-logger';
 
 export default async function handler(req, res) {
     try {
@@ -88,24 +89,20 @@ export default async function handler(req, res) {
             await Promise.all(metricsToUpdate);
         }
 
-        // Create audit log with predictable ID
-        const auditLogId = `SHIPMENT_STATUS_${status.toUpperCase()}_${shipmentId}`;
-        await db.collection('auditLogs').doc(auditLogId).set({
-            logId: auditLogId,
-            entityType: 'SHIPMENT',
-            entityId: shipmentId,
-            entityNumber: shipmentData?.shipmentNumber || shipmentId,
-            action: `status_${status}`,
-            userId: user.uid,
-            userName: user.name || user.email,
-            userRole: user.role || 'user',
-            timestamp: new Date(),
-            metadata: {
-                oldStatus: shipmentData?.status,
-                newStatus: status,
-                poNumber: shipmentData?.poNumber
+        // Create audit log using centralized logger
+        await logAction(
+            'UPDATE',
+            user.uid,
+            'SHIPMENT',
+            shipmentId,
+            { before: { status: shipmentData?.status }, after: { status } },
+            {
+                ipAddress: getIpAddress(req),
+                userAgent: getUserAgent(req),
+                userRole: user.role,
+                extra: { action: `status_${status}`, poNumber: shipmentData?.poNumber }
             }
-        });
+        );
 
         // Create recent activity with predictable ID
         const recentActivityId = `SHIPMENT_STATUS_${status.toUpperCase()}_${shipmentId}`;
