@@ -230,17 +230,21 @@ async function autoUpdatePOStatuses(purchaseOrders) {
 
         let newStatus = null;
 
+        // If all qty sent → completed (regardless of days)
+        if (sentQty >= totalQty && totalQty > 0 && po.status !== 'completed') {
+            newStatus = 'completed';
+        }
         // If 45+ days old and 0 qty sent → closed
-        if (daysDiff >= 45 && sentQty === 0 && po.status !== 'closed') {
+        else if (daysDiff >= 45 && sentQty === 0 && po.status !== 'closed') {
             newStatus = 'closed';
         }
-        // If partial qty sent (sent > 0 but sent < total) → partial_completed
-        else if (sentQty > 0 && sentQty < totalQty && po.status !== 'partial_completed' && po.status !== 'completed') {
+        // If 45+ days old and partial qty sent → partial_completed
+        else if (daysDiff >= 45 && sentQty > 0 && sentQty < totalQty && po.status !== 'partial_completed') {
             newStatus = 'partial_completed';
         }
-        // If all qty sent → completed
-        else if (sentQty >= totalQty && totalQty > 0 && po.status !== 'completed') {
-            newStatus = 'completed';
+        // If under 45 days and partial qty sent → partial_sent
+        else if (daysDiff < 45 && sentQty > 0 && sentQty < totalQty && po.status !== 'partial_sent') {
+            newStatus = 'partial_sent';
         }
 
         // Update if status changed
@@ -252,6 +256,8 @@ async function autoUpdatePOStatuses(purchaseOrders) {
                 statusUpdatedReason: newStatus === 'closed' 
                     ? '45+ days with no shipment' 
                     : newStatus === 'partial_completed'
+                    ? '45+ days with partial shipment'
+                    : newStatus === 'partial_sent'
                     ? 'Partial quantity shipped'
                     : 'All quantity shipped'
             });
