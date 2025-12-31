@@ -166,32 +166,24 @@ export default function Dashboard() {
                     <StatCard
                         title="Total Order Qty"
                         value={periodMetrics?.orderQty ?? metrics?.totalOrderQty ?? 0}
-                        change="+12.5%"
-                        trend="up"
                         icon={Package}
                         color="blue"
                     />
                     <StatCard
                         title="Shipped Qty"
                         value={periodMetrics?.shippedQty ?? metrics?.totalShippedQty ?? 0}
-                        change="+8.2%"
-                        trend="up"
                         icon={Truck}
                         color="green"
                     />
                     <StatCard
                         title="Pending Qty"
                         value={periodMetrics?.pendingQty ?? metrics?.totalPendingQty ?? 0}
-                        change="-3.1%"
-                        trend="down"
                         icon={Clock}
                         color="yellow"
                     />
                     <StatCard
                         title="Delivered Qty"
                         value={periodMetrics?.deliveredQty ?? metrics?.totalDeliveredQty ?? 0}
-                        change="+15.3%"
-                        trend="up"
                         icon={Package}
                         color="purple"
                     />

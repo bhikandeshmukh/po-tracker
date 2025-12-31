@@ -9,13 +9,21 @@ const colorClasses = {
     red: 'from-red-500 to-red-600',
 };
 
-export default function StatCard({ title, value, change, trend, icon: Icon, color = 'blue' }) {
+export default function StatCard({ title, value, change, trend, icon: Icon, color = 'blue', subtitle }) {
+    // Format large numbers with commas
+    const formatValue = (val) => {
+        if (typeof val === 'number') {
+            return val.toLocaleString('en-IN');
+        }
+        return val;
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">{title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{formatValue(value)}</p>
                     {change && (
                         <div className="flex items-center mt-2 space-x-1">
                             {trend === 'up' ? (
@@ -26,8 +34,11 @@ export default function StatCard({ title, value, change, trend, icon: Icon, colo
                             <span className={`text-sm font-medium ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                                 {change}
                             </span>
-                            <span className="text-sm text-gray-500">vs last month</span>
+                            <span className="text-sm text-gray-500">vs last period</span>
                         </div>
+                    )}
+                    {subtitle && !change && (
+                        <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
                     )}
                 </div>
                 <div className={`w-12 h-12 bg-gradient-to-br ${colorClasses[color]} rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20`}>
