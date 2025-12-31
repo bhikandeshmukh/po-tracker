@@ -136,5 +136,46 @@ service cloud.firestore {
       allow read: if true; // Public for health checks
       allow write: if false;
     }
+    
+    // Channels collection (Team Chat)
+    match /channels/{channelId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAuthenticated(); // For updating lastMessage
+      allow delete: if isAdmin();
+      
+      // Messages sub-collection (Hierarchical)
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && request.auth.uid == resource.data.senderId;
+        // Delete: Admin anytime OR sender within 30 minutes of creation
+        allow delete: if isAdmin() || 
+          (isAuthenticated() && 
+           request.auth.uid == resource.data.senderId && 
+           resource.data.createdAt > request.time - duration.value(30, 'm'));
+      }
+    }
+    
+    // User Channels (for tracking unread counts)
+    match /userChannels/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      match /channels/{channelId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
+    }
+    
+    // Presence collection (online/offline status)
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Metadata collection (for dashboard metrics etc)
+    match /metadata/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only backend can write
+    }
   }
 }
