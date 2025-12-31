@@ -1,7 +1,7 @@
 // pages/audit-logs/index.js
 // Audit Logs Viewer Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -37,19 +37,11 @@ export default function AuditLogs() {
     const [selectedLog, setSelectedLog] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
-    useEffect(() => {
-        if (user && (user.role === 'admin' || user.role === 'super_admin')) {
-            fetchLogs();
-            fetchStats();
-        } else if (user) {
-            router.push('/dashboard');
-        }
-    }, [user]);
-
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
+            params.append('_t', Date.now().toString());
 
             Object.keys(filters).forEach(key => {
                 if (filters[key]) {
@@ -66,18 +58,39 @@ export default function AuditLogs() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters]);
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
-            const response = await apiClient.get('/audit-logs?stats=true');
+            const response = await apiClient.get(`/audit-logs?stats=true&_t=${Date.now()}`);
             if (response.success) {
                 setStats(response.data);
             }
         } catch (error) {
             console.error('Error fetching stats:', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+            fetchLogs();
+            fetchStats();
+        } else if (user) {
+            router.push('/dashboard');
+        }
+    }, [user, fetchLogs, fetchStats, router]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => {
+            if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+                fetchLogs();
+                fetchStats();
+            }
+        };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [user, fetchLogs, fetchStats]);
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -303,13 +316,13 @@ export default function AuditLogs() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="7" className="px-6 py-12 text-center">
+                                        <td colSpan={7} className="px-6 py-12 text-center">
                                             <TableSkeleton rows={8} columns={7} />
                                         </td>
                                     </tr>
                                 ) : logs.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                                             No audit logs found
                                         </td>
                                     </tr>

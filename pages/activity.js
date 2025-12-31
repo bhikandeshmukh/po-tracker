@@ -1,7 +1,7 @@
 // pages/activity.js
 // Recent Activity & Audit Trail Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout/Layout';
 import apiClient from '../lib/api-client';
@@ -15,14 +15,10 @@ export default function ActivityPage() {
     const [filter, setFilter] = useState('all');
     const [limit, setLimit] = useState(50);
 
-    useEffect(() => {
-        fetchActivities();
-    }, [filter, limit]);
-
-    const fetchActivities = async () => {
+    const fetchActivities = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.getRecentActivities({ limit });
+            const response = await apiClient.getRecentActivities({ limit, _t: Date.now() });
             if (response.success) {
                 setActivities(response.data || []);
             }
@@ -31,7 +27,18 @@ export default function ActivityPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [limit]);
+
+    useEffect(() => {
+        fetchActivities();
+    }, [fetchActivities, filter]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchActivities();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchActivities]);
 
     const getActivityIcon = (type) => {
         switch (type) {

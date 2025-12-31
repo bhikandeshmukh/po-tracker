@@ -1,7 +1,7 @@
 // pages/dashboard.js
 // Modern dashboard with metrics and charts
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth-client';
 import apiClient from '../lib/api-client';
@@ -31,15 +31,15 @@ export default function Dashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
-    const fetchDashboardData = async (forceRefresh = false) => {
+    const fetchDashboardData = useCallback(async (forceRefresh = false) => {
         try {
             setError(null);
             if (forceRefresh && !loading) setRefreshing(true);
 
             console.log('Fetching dashboard data...', forceRefresh ? '(forced refresh)' : '');
 
-            // Pass forceRefresh to all calls
-            const params = forceRefresh ? { refresh: 'true' } : {};
+            // Pass forceRefresh and timestamp to all calls
+            const params = forceRefresh ? { refresh: 'true', _t: Date.now() } : { _t: Date.now() };
 
             const [metricsRes, activitiesRes, chartRes] = await Promise.all([
                 apiClient.getDashboardMetrics(forceRefresh),
@@ -76,7 +76,7 @@ export default function Dashboard() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [loading, period]);
 
     useEffect(() => {
         let refreshInterval;
@@ -85,8 +85,7 @@ export default function Dashboard() {
             // Force refresh on initial load
             fetchDashboardData(false); // Use cache first
 
-            // Auto-refresh every 5 minutes (300000ms) to match cache TTL, or 30s if desired
-            // Changing to 60s for better experience but less load
+            // Auto-refresh every 60s
             refreshInterval = setInterval(() => {
                 fetchDashboardData(true);
             }, 60000);
@@ -97,7 +96,16 @@ export default function Dashboard() {
                 clearInterval(refreshInterval);
             }
         };
-    }, [user, period]); // Refetch when period changes
+    }, [user, period, fetchDashboardData]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => {
+            if (user) fetchDashboardData(true);
+        };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [user, fetchDashboardData]);
 
     if (loading) {
         return (

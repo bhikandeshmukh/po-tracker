@@ -1,5 +1,5 @@
 // pages/returns/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -21,20 +21,28 @@ export default function Returns() {
     const [returns, setReturns] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchReturns();
-    }, []);
-
-    const fetchReturns = async () => {
+    const fetchReturns = useCallback(async () => {
         try {
-            const response = await apiClient.getReturns({ limit: 50 });
-            if (response.success) setReturns(response.data);
+            setLoading(true);
+            const response = await apiClient.getReturns({ limit: 50, _t: Date.now() });
+            if (response.success) setReturns(response.data || []);
         } catch (error) {
             console.error('Failed to fetch returns:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchReturns();
+    }, [fetchReturns]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchReturns();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchReturns]);
 
     const handleBulkImport = async (data) => {
         try {

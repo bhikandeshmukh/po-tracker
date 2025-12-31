@@ -1,7 +1,7 @@
 // pages/shipments/index.js
 // Shipments List Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -24,14 +24,10 @@ export default function Shipments() {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('all');
 
-    useEffect(() => {
-        fetchShipments();
-    }, [statusFilter]);
-
-    const fetchShipments = async () => {
+    const fetchShipments = useCallback(async () => {
         try {
             setLoading(true);
-            const params = { limit: 50 };
+            const params = { limit: 50, _t: Date.now() }; // Add timestamp to bypass cache
             if (statusFilter !== 'all') params.status = statusFilter;
 
             const response = await apiClient.getShipments(params);
@@ -40,12 +36,22 @@ export default function Shipments() {
             }
         } catch (error) {
             console.error('Failed to fetch shipments:', error);
-            // Set empty array on error to show empty state
             setShipments([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter]);
+
+    useEffect(() => {
+        fetchShipments();
+    }, [fetchShipments]);
+
+    // Refetch when page becomes visible (tab switch, navigation back)
+    useEffect(() => {
+        const handleFocus = () => fetchShipments();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchShipments]);
 
     const handleBulkImport = async (data) => {
         try {

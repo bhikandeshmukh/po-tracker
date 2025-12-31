@@ -1,7 +1,7 @@
 // pages/vendors/index.js
 // Vendors List Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -15,14 +15,10 @@ export default function Vendors() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        fetchVendors();
-    }, []);
-
-    const fetchVendors = async () => {
+    const fetchVendors = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await apiClient.getVendors({ limit: 50 });
+            const response = await apiClient.getVendors({ limit: 50, _t: Date.now() });
             if (response.success) {
                 setVendors(response.data || []);
             }
@@ -32,7 +28,18 @@ export default function Vendors() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchVendors();
+    }, [fetchVendors]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchVendors();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchVendors]);
 
     const handleBulkImport = async (data) => {
         try {

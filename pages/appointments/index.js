@@ -1,5 +1,5 @@
 // pages/appointments/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -147,13 +147,10 @@ export default function Appointments() {
     const [emailContent, setEmailContent] = useState({ subject: '', body: '', htmlBody: '' });
     const [emailViewMode, setEmailViewMode] = useState('preview'); // 'preview', 'plain', 'html'
 
-    useEffect(() => {
-        fetchAppointments();
-    }, []);
-
-    const fetchAppointments = async () => {
+    const fetchAppointments = useCallback(async () => {
         try {
-            const response = await apiClient.getAppointments({ limit: 50 });
+            setLoading(true);
+            const response = await apiClient.getAppointments({ limit: 50, _t: Date.now() });
             if (response.success) {
                 const appointments = response.data;
                 
@@ -221,7 +218,18 @@ export default function Appointments() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchAppointments();
+    }, [fetchAppointments]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchAppointments();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchAppointments]);
 
     const handleDownloadPDF = async (appointment) => {
         console.log('Downloading PDF for:', appointment.appointmentNumber);
@@ -475,7 +483,7 @@ Thank You`;
                         {(() => {
                             const upcomingAppointments = appointments
                                 .filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status))
-                                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+                                .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
                             return upcomingAppointments.length > 0 && (
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                                     <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -506,7 +514,7 @@ Thank You`;
                         {(() => {
                             const completedAppointments = appointments
                                 .filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status))
-                                .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
+                                .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
                             return completedAppointments.length > 0 && (
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                                     <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">

@@ -1,7 +1,7 @@
 // pages/users/index.js
 // User Management Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -52,14 +52,10 @@ export default function UsersManagement() {
         // User data available in currentUser
     }, [currentUser]);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [roleFilter]);
-
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const params = { limit: 100 };
+            const params = { limit: 100, _t: Date.now() };
             if (roleFilter !== 'all') params.role = roleFilter;
 
             const response = await apiClient.getUsers(params);
@@ -72,7 +68,18 @@ export default function UsersManagement() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [roleFilter]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchUsers();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchUsers]);
 
     const handleDeleteUser = async () => {
         if (!selectedUser) return;
@@ -324,6 +331,7 @@ export default function UsersManagement() {
                             setShowCreateModal(false);
                             fetchUsers();
                         }}
+                        existingUsers={users}
                     />
                 )}
             </div>
@@ -332,7 +340,7 @@ export default function UsersManagement() {
 }
 
 // Create User Modal Component
-function CreateUserModal({ onClose, onSuccess }) {
+function CreateUserModal({ onClose, onSuccess, existingUsers = [] }) {
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -462,7 +470,7 @@ function CreateUserModal({ onClose, onSuccess }) {
                                 <option value="user">User</option>
                                 <option value="manager">Manager</option>
                                 <option value="admin">Admin</option>
-                                {!users.some(u => u.role === 'super_admin') && (
+                                {!existingUsers.some(u => u.role === 'super_admin') && (
                                     <option value="super_admin">Super Admin</option>
                                 )}
                             </select>

@@ -1,7 +1,7 @@
 // pages/purchase-orders/index.js
 // Purchase Orders List Page
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import ProtectedRoute from '../../components/ProtectedRoute';
@@ -62,14 +62,10 @@ export default function PurchaseOrders() {
     const [showImportModal, setShowImportModal] = useState(false);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    useEffect(() => {
-        fetchOrders();
-    }, [statusFilter, rowsPerPage]);
-
-    const fetchOrders = async (cursor = null, direction = 'next') => {
+    const fetchOrders = useCallback(async (cursor = null, direction = 'next') => {
         try {
             setLoading(true);
-            const params = { limit: rowsPerPage };
+            const params = { limit: rowsPerPage, _t: Date.now() };
             if (statusFilter !== 'all') params.status = statusFilter;
             if (searchTerm) params.search = searchTerm;
             if (cursor) params.lastDocId = cursor;
@@ -91,7 +87,18 @@ export default function PurchaseOrders() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter, rowsPerPage, searchTerm]);
+
+    useEffect(() => {
+        fetchOrders();
+    }, [fetchOrders]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchOrders();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchOrders]);
 
     const handleNextPage = () => {
         if (nextCursor) {

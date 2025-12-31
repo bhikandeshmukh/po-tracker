@@ -1,5 +1,5 @@
 // pages/transporters/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout/Layout';
 import apiClient from '../../lib/api-client';
@@ -12,20 +12,28 @@ export default function Transporters() {
     const [transporters, setTransporters] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchTransporters();
-    }, []);
-
-    const fetchTransporters = async () => {
+    const fetchTransporters = useCallback(async () => {
         try {
-            const response = await apiClient.getTransporters({ limit: 50 });
-            if (response.success) setTransporters(response.data);
+            setLoading(true);
+            const response = await apiClient.getTransporters({ limit: 50, _t: Date.now() });
+            if (response.success) setTransporters(response.data || []);
         } catch (error) {
             console.error('Failed to fetch transporters:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchTransporters();
+    }, [fetchTransporters]);
+
+    // Refetch when page becomes visible
+    useEffect(() => {
+        const handleFocus = () => fetchTransporters();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [fetchTransporters]);
 
     const handleBulkImport = async (data) => {
         try {
