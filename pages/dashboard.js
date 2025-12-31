@@ -24,9 +24,10 @@ export default function Dashboard() {
     const router = useRouter();
     const { user } = useAuth();
     const [metrics, setMetrics] = useState(null);
+    const [periodMetrics, setPeriodMetrics] = useState(null); // Metrics for selected period
     const [activities, setActivities] = useState([]);
     const [chartData, setChartData] = useState([]);
-    const [period, setPeriod] = useState('6months');
+    const [period, setPeriod] = useState('30days');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
@@ -65,6 +66,10 @@ export default function Dashboard() {
 
             if (chartRes.success) {
                 setChartData(chartRes.data || []);
+                // Set period-specific metrics from chart totals
+                if (chartRes.totals) {
+                    setPeriodMetrics(chartRes.totals);
+                }
             } else {
                 console.error('Chart fetch failed:', chartRes.error);
                 setChartData([]);
@@ -160,7 +165,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
                         title="Total Order Qty"
-                        value={metrics?.totalOrderQty || 0}
+                        value={periodMetrics?.orderQty ?? metrics?.totalOrderQty ?? 0}
                         change="+12.5%"
                         trend="up"
                         icon={Package}
@@ -168,7 +173,7 @@ export default function Dashboard() {
                     />
                     <StatCard
                         title="Shipped Qty"
-                        value={metrics?.totalShippedQty || 0}
+                        value={periodMetrics?.shippedQty ?? metrics?.totalShippedQty ?? 0}
                         change="+8.2%"
                         trend="up"
                         icon={Truck}
@@ -176,7 +181,7 @@ export default function Dashboard() {
                     />
                     <StatCard
                         title="Pending Qty"
-                        value={metrics?.totalPendingQty || 0}
+                        value={periodMetrics?.pendingQty ?? metrics?.totalPendingQty ?? 0}
                         change="-3.1%"
                         trend="down"
                         icon={Clock}
@@ -184,7 +189,7 @@ export default function Dashboard() {
                     />
                     <StatCard
                         title="Delivered Qty"
-                        value={metrics?.totalDeliveredQty || 0}
+                        value={periodMetrics?.deliveredQty ?? metrics?.totalDeliveredQty ?? 0}
                         change="+15.3%"
                         trend="up"
                         icon={Package}
@@ -203,7 +208,7 @@ export default function Dashboard() {
                                         Quantity Trends
                                     </h2>
                                     <p className="text-sm text-gray-600 mt-1">
-                                        Monthly overview of Order vs Shipped vs Delivered
+                                        {period === '30days' ? 'Daily' : 'Monthly'} overview of Order vs Shipped vs Delivered
                                     </p>
                                 </div>
                                 <select
@@ -211,6 +216,7 @@ export default function Dashboard() {
                                     onChange={(e) => setPeriod(e.target.value)}
                                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 >
+                                    <option value="30days">Last 30 days</option>
                                     <option value="6months">Last 6 months</option>
                                     <option value="12months">Last 12 months</option>
                                     <option value="thisYear">This year</option>
@@ -326,15 +332,15 @@ export default function Dashboard() {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-600">Total Ordered</span>
-                                <span className="font-semibold text-blue-600">{metrics?.totalOrderQty || 0}</span>
+                                <span className="font-semibold text-blue-600">{periodMetrics?.orderQty ?? metrics?.totalOrderQty ?? 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-600">Total Shipped</span>
-                                <span className="font-semibold text-green-600">{metrics?.totalShippedQty || 0}</span>
+                                <span className="font-semibold text-green-600">{periodMetrics?.shippedQty ?? metrics?.totalShippedQty ?? 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-600">Total Delivered</span>
-                                <span className="font-semibold text-purple-600">{metrics?.totalDeliveredQty || 0}</span>
+                                <span className="font-semibold text-purple-600">{periodMetrics?.deliveredQty ?? metrics?.totalDeliveredQty ?? 0}</span>
                             </div>
                         </div>
                     </div>
