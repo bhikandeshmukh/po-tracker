@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth-client';
 import apiClient from '../../lib/api-client';
+import ErrorBoundary from '../Common/ErrorBoundary';
 import {
     Package,
     LayoutDashboard,
@@ -252,7 +253,9 @@ export default function Layout({ children }) {
 
                 {/* Page content */}
                 <main className="p-6">
-                    {children}
+                    <ErrorBoundary>
+                        {children}
+                    </ErrorBoundary>
                 </main>
             </div>
         </div>

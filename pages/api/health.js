@@ -29,7 +29,7 @@ export default async function handler(req, res) {
                 },
                 api: {
                     status: 'running',
-                    version: '1.0.0'
+                    version: '3.0.0'
                 }
             },
             environment: process.env.NODE_ENV || 'development'
