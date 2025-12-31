@@ -23,7 +23,8 @@ import {
     X,
     Bell,
     Search,
-    Activity
+    Activity,
+    MessageSquare
 } from 'lucide-react';
 
 const navigation = [
@@ -33,6 +34,7 @@ const navigation = [
     { name: 'Returns', href: '/returns', icon: RotateCcw },
     { name: 'Vendors', href: '/vendors', icon: Building2 },
     { name: 'Transporters', href: '/transporters', icon: Users },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Activity Log', href: '/activity', icon: Activity },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Audit Logs', href: '/audit-logs', icon: Settings, adminOnly: true },
