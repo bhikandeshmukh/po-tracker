@@ -102,6 +102,7 @@ export default function Layout({ children }) {
                 <meta name="description" content="Efficient Purchase Order Tracking and Management System" />
                 <meta name="keywords" content="purchase order, tracking, inventory, logistics, management" />
                 <meta name="author" content="Bhikan Deshmukh" />
+                <meta name="google-site-verification" content="WnvjDGQCULijZ6Ts7yE0DvmRcnWf8QD_KkUCaOjdnjw" />
                 <meta property="og:title" content={title} />
                 <meta property="og:description" content="Efficient Purchase Order Tracking and Management System" />
                 <meta property="og:type" content="website" />
