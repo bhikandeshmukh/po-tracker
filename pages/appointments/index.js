@@ -493,272 +493,271 @@ Thank You`;
                         <p className="text-gray-500">Appointments will appear here once shipments are created</p>
                     </div>
                 ) : (
-                ): (
-                        <div className = "space-y-6">
-                        {/* Tab Navigation */ }
+                    <div className="space-y-6">
+                        {/* Tab Navigation */}
                         <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-2">
-                    {(() => {
-                        const upcomingCount = appointments.filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status)).length;
-                        const completedCount = appointments.filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status)).length;
+                            {(() => {
+                                const upcomingCount = appointments.filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status)).length;
+                                const completedCount = appointments.filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status)).length;
 
-                        return (
-                            <>
-                                <button
-                                    onClick={() => setActiveTab('upcoming')}
-                                    className={`flex items-center space-x-2 py-4 px-6 border-b-2 font-medium text-sm transition-colors ${activeTab === 'upcoming'
-                                        ? 'border-indigo-600 text-indigo-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <Clock className="w-4 h-4" />
-                                    <span>Upcoming & In Transit</span>
-                                    <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs ${activeTab === 'upcoming' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
-                                        }`}>
-                                        {upcomingCount}
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('completed')}
-                                    className={`flex items-center space-x-2 py-4 px-6 border-b-2 font-medium text-sm transition-colors ${activeTab === 'completed'
-                                        ? 'border-green-600 text-green-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <Package className="w-4 h-4" />
-                                    <span>Completed</span>
-                                    <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs ${activeTab === 'completed' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
-                                        }`}>
-                                        {completedCount}
-                                    </span>
-                                </button>
-                            </>
-                        );
-                    })()}
-                </div>
-
-                {/* Upcoming & In Transit Section */}
-                {activeTab === 'upcoming' && (() => {
-                    const upcomingAppointments = appointments
-                        .filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status))
-                        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
-
-                    if (upcomingAppointments.length === 0) {
-                        return (
-                            <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200 p-8 text-center text-gray-500">
-                                No upcoming appointments
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200">
-                            <div className="divide-y divide-gray-200">
-                                {upcomingAppointments.map((appointment) => (
-                                    <AppointmentCard
-                                        key={appointment.appointmentId}
-                                        appointment={appointment}
-                                        router={router}
-                                        isCompleted={false}
-                                        onDownloadPDF={handleDownloadPDF}
-                                        onSendEmail={handleSendEmail}
-                                        onToggleEmailSent={handleToggleEmailSent}
-                                    />
-                                ))}
-                            </div>
+                                return (
+                                    <>
+                                        <button
+                                            onClick={() => setActiveTab('upcoming')}
+                                            className={`flex items-center space-x-2 py-4 px-6 border-b-2 font-medium text-sm transition-colors ${activeTab === 'upcoming'
+                                                ? 'border-indigo-600 text-indigo-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            <Clock className="w-4 h-4" />
+                                            <span>Upcoming & In Transit</span>
+                                            <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs ${activeTab === 'upcoming' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                                                }`}>
+                                                {upcomingCount}
+                                            </span>
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('completed')}
+                                            className={`flex items-center space-x-2 py-4 px-6 border-b-2 font-medium text-sm transition-colors ${activeTab === 'completed'
+                                                ? 'border-green-600 text-green-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            <Package className="w-4 h-4" />
+                                            <span>Completed</span>
+                                            <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs ${activeTab === 'completed' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                                                }`}>
+                                                {completedCount}
+                                            </span>
+                                        </button>
+                                    </>
+                                );
+                            })()}
                         </div>
-                    );
-                })()}
 
-                {/* Completed Section */}
-                {activeTab === 'completed' && (() => {
-                    const completedAppointments = appointments
-                        .filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status))
-                        .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
+                        {/* Upcoming & In Transit Section */}
+                        {activeTab === 'upcoming' && (() => {
+                            const upcomingAppointments = appointments
+                                .filter(a => ['created', 'pending', 'in_transit', 'scheduled', 'confirmed', 'in_progress', 'rescheduled'].includes(a.status))
+                                .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
 
-                    if (completedAppointments.length === 0) {
-                        return (
-                            <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200 p-8 text-center text-gray-500">
-                                No completed appointments
-                            </div>
-                        );
-                    }
+                            if (upcomingAppointments.length === 0) {
+                                return (
+                                    <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200 p-8 text-center text-gray-500">
+                                        No upcoming appointments
+                                    </div>
+                                );
+                            }
 
-                    return (
-                        <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200">
-                            <div className="divide-y divide-gray-200">
-                                {completedAppointments.map((appointment) => (
-                                    <AppointmentCard
-                                        key={appointment.appointmentId}
-                                        appointment={appointment}
-                                        router={router}
-                                        isCompleted={true}
-                                        onDownloadPDF={handleDownloadPDF}
-                                        onSendEmail={handleSendEmail}
-                                        onToggleEmailSent={handleToggleEmailSent}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
+                            return (
+                                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200">
+                                    <div className="divide-y divide-gray-200">
+                                        {upcomingAppointments.map((appointment) => (
+                                            <AppointmentCard
+                                                key={appointment.appointmentId}
+                                                appointment={appointment}
+                                                router={router}
+                                                isCompleted={false}
+                                                onDownloadPDF={handleDownloadPDF}
+                                                onSendEmail={handleSendEmail}
+                                                onToggleEmailSent={handleToggleEmailSent}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Completed Section */}
+                        {activeTab === 'completed' && (() => {
+                            const completedAppointments = appointments
+                                .filter(a => ['delivered', 'completed', 'cancelled'].includes(a.status))
+                                .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
+
+                            if (completedAppointments.length === 0) {
+                                return (
+                                    <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200 p-8 text-center text-gray-500">
+                                        No completed appointments
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-gray-200">
+                                    <div className="divide-y divide-gray-200">
+                                        {completedAppointments.map((appointment) => (
+                                            <AppointmentCard
+                                                key={appointment.appointmentId}
+                                                appointment={appointment}
+                                                router={router}
+                                                isCompleted={true}
+                                                onDownloadPDF={handleDownloadPDF}
+                                                onSendEmail={handleSendEmail}
+                                                onToggleEmailSent={handleToggleEmailSent}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
             </div>
-        )}
-        </div>
 
-            {/* Email Modal */ }
-    {
-        showEmailModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-gray-900">Email to Transporter</h3>
-                            <button
-                                onClick={() => setShowEmailModal(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+            {/* Email Modal */}
+            {
+                showEmailModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-900">Email to Transporter</h3>
+                                    <button
+                                        onClick={() => setShowEmailModal(false)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                                <input
-                                    type="text"
-                                    value={emailContent.subject}
-                                    readOnly
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                                />
-                            </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                                        <input
+                                            type="text"
+                                            value={emailContent.subject}
+                                            readOnly
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                                        />
+                                    </div>
 
-                            {/* View Mode Tabs */}
-                            <div className="flex space-x-2 border-b border-gray-200">
-                                <button
-                                    onClick={() => setEmailViewMode('preview')}
-                                    className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'preview' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
-                                >
-                                    Preview
-                                </button>
-                                <button
-                                    onClick={() => setEmailViewMode('plain')}
-                                    className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'plain' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
-                                >
-                                    Plain Text
-                                </button>
-                                <button
-                                    onClick={() => setEmailViewMode('html')}
-                                    className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'html' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
-                                >
-                                    HTML Code
-                                </button>
-                            </div>
+                                    {/* View Mode Tabs */}
+                                    <div className="flex space-x-2 border-b border-gray-200">
+                                        <button
+                                            onClick={() => setEmailViewMode('preview')}
+                                            className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'preview' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
+                                        >
+                                            Preview
+                                        </button>
+                                        <button
+                                            onClick={() => setEmailViewMode('plain')}
+                                            className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'plain' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
+                                        >
+                                            Plain Text
+                                        </button>
+                                        <button
+                                            onClick={() => setEmailViewMode('html')}
+                                            className={`px-4 py-2 font-medium text-sm ${emailViewMode === 'html' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}
+                                        >
+                                            HTML Code
+                                        </button>
+                                    </div>
 
-                            <div>
-                                {emailViewMode === 'preview' && (
-                                    <div
-                                        className="border border-gray-300 rounded-lg p-4 bg-white"
-                                        dangerouslySetInnerHTML={{ __html: emailContent.htmlBody }}
-                                    />
-                                )}
-                                {emailViewMode === 'plain' && (
-                                    <textarea
-                                        value={emailContent.body}
-                                        readOnly
-                                        rows={15}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
-                                    />
-                                )}
-                                {emailViewMode === 'html' && (
-                                    <textarea
-                                        value={emailContent.htmlBody}
-                                        readOnly
-                                        rows={15}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-xs"
-                                    />
-                                )}
-                            </div>
+                                    <div>
+                                        {emailViewMode === 'preview' && (
+                                            <div
+                                                className="border border-gray-300 rounded-lg p-4 bg-white"
+                                                dangerouslySetInnerHTML={{ __html: emailContent.htmlBody }}
+                                            />
+                                        )}
+                                        {emailViewMode === 'plain' && (
+                                            <textarea
+                                                value={emailContent.body}
+                                                readOnly
+                                                rows={15}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                                            />
+                                        )}
+                                        {emailViewMode === 'html' && (
+                                            <textarea
+                                                value={emailContent.htmlBody}
+                                                readOnly
+                                                rows={15}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-xs"
+                                            />
+                                        )}
+                                    </div>
 
-                            <div className="flex flex-col space-y-3">
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            // Copy HTML to clipboard for pasting
-                                            const htmlBlob = new Blob([emailContent.htmlBody], { type: 'text/html' });
-                                            const textBlob = new Blob([emailContent.body], { type: 'text/plain' });
+                                    <div className="flex flex-col space-y-3">
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    // Copy HTML to clipboard for pasting
+                                                    const htmlBlob = new Blob([emailContent.htmlBody], { type: 'text/html' });
+                                                    const textBlob = new Blob([emailContent.body], { type: 'text/plain' });
 
-                                            const clipboardItem = new ClipboardItem({
-                                                'text/html': htmlBlob,
-                                                'text/plain': textBlob
-                                            });
+                                                    const clipboardItem = new ClipboardItem({
+                                                        'text/html': htmlBlob,
+                                                        'text/plain': textBlob
+                                                    });
 
-                                            await navigator.clipboard.write([clipboardItem]);
+                                                    await navigator.clipboard.write([clipboardItem]);
 
-                                            // Open Gmail compose with subject and body
-                                            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(emailContent.subject)}&body=${encodeURIComponent(emailContent.body)}`;
-                                            window.open(gmailUrl, '_blank');
+                                                    // Open Gmail compose with subject and body
+                                                    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(emailContent.subject)}&body=${encodeURIComponent(emailContent.body)}`;
+                                                    window.open(gmailUrl, '_blank');
 
-                                            setTimeout(() => {
-                                                alert('✅ Gmail opened!\n\n📧 Subject & body pre-filled\n📋 Formatted HTML also copied\n\n💡 Tip: Delete plain text and paste (Ctrl+V) for bold formatting!');
-                                            }, 1000);
-                                        } catch (err) {
-                                            console.error('Failed to copy HTML:', err);
-                                            // Fallback - open Gmail with body
-                                            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(emailContent.subject)}&body=${encodeURIComponent(emailContent.body)}`;
-                                            window.open(gmailUrl, '_blank');
-                                            alert('📧 Gmail opened with email content!');
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 font-medium shadow-lg"
-                                >
-                                    📧 Open Gmail Compose
-                                </button>
+                                                    setTimeout(() => {
+                                                        alert('✅ Gmail opened!\n\n📧 Subject & body pre-filled\n📋 Formatted HTML also copied\n\n💡 Tip: Delete plain text and paste (Ctrl+V) for bold formatting!');
+                                                    }, 1000);
+                                                } catch (err) {
+                                                    console.error('Failed to copy HTML:', err);
+                                                    // Fallback - open Gmail with body
+                                                    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(emailContent.subject)}&body=${encodeURIComponent(emailContent.body)}`;
+                                                    window.open(gmailUrl, '_blank');
+                                                    alert('📧 Gmail opened with email content!');
+                                                }
+                                            }}
+                                            className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 font-medium shadow-lg"
+                                        >
+                                            📧 Open Gmail Compose
+                                        </button>
 
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            // Copy HTML for formatted paste
-                                            const htmlBlob = new Blob([emailContent.htmlBody], { type: 'text/html' });
-                                            const textBlob = new Blob([emailContent.body], { type: 'text/plain' });
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    // Copy HTML for formatted paste
+                                                    const htmlBlob = new Blob([emailContent.htmlBody], { type: 'text/html' });
+                                                    const textBlob = new Blob([emailContent.body], { type: 'text/plain' });
 
-                                            const clipboardItem = new ClipboardItem({
-                                                'text/html': htmlBlob,
-                                                'text/plain': textBlob
-                                            });
+                                                    const clipboardItem = new ClipboardItem({
+                                                        'text/html': htmlBlob,
+                                                        'text/plain': textBlob
+                                                    });
 
-                                            await navigator.clipboard.write([clipboardItem]);
-                                            alert('✓ Formatted email copied!\n\nPaste in Gmail for bold labels.');
-                                        } catch (err) {
-                                            // Fallback to plain text
-                                            await navigator.clipboard.writeText(emailContent.body);
-                                            alert('✓ Plain text copied to clipboard!');
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 font-medium"
-                                >
-                                    📋 Copy Formatted Email
-                                </button>
+                                                    await navigator.clipboard.write([clipboardItem]);
+                                                    alert('✓ Formatted email copied!\n\nPaste in Gmail for bold labels.');
+                                                } catch (err) {
+                                                    // Fallback to plain text
+                                                    await navigator.clipboard.writeText(emailContent.body);
+                                                    alert('✓ Plain text copied to clipboard!');
+                                                }
+                                            }}
+                                            className="w-full px-4 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 font-medium"
+                                        >
+                                            📋 Copy Formatted Email
+                                        </button>
 
-                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                    <p className="text-sm text-indigo-900 font-medium mb-2">
-                                        ✨ Best Method:
-                                    </p>
-                                    <ol className="text-xs text-indigo-800 space-y-1 ml-4 list-decimal">
-                                        <li>Click "Open Gmail Compose"</li>
-                                        <li>Gmail opens with subject & body</li>
-                                        <li>For bold labels: Select all (Ctrl+A) → Delete</li>
-                                        <li>Paste (Ctrl+V) - Bold formatting applied!</li>
-                                    </ol>
+                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                            <p className="text-sm text-indigo-900 font-medium mb-2">
+                                                ✨ Best Method:
+                                            </p>
+                                            <ol className="text-xs text-indigo-800 space-y-1 ml-4 list-decimal">
+                                                <li>Click "Open Gmail Compose"</li>
+                                                <li>Gmail opens with subject & body</li>
+                                                <li>For bold labels: Select all (Ctrl+A) → Delete</li>
+                                                <li>Paste (Ctrl+V) - Bold formatting applied!</li>
+                                            </ol>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
         </Layout >
     );
 }
