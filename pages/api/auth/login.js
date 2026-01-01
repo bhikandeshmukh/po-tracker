@@ -17,7 +17,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        console.log('[DEBUG] Login API called. Body:', req.body);
+        const shouldSkipLog = req.query.skipLog === 'true' || req.body?.skipLog === true;
+        console.log(`[DEBUG] Login API called. shouldSkipLog: ${shouldSkipLog}, Body:`, req.body, 'Query:', req.query);
         // Verify the user is already authenticated (logged in via frontend)
         const user = await verifyAuth(req);
 
@@ -65,7 +66,10 @@ export default async function handler(req, res) {
         });
 
         // Create audit log using centralized logger
-        if (!req.body.skipLog) {
+        // Support skipLog in both query (more reliable) and body
+        shouldSkipLog = req.query.skipLog === 'true' || req.body?.skipLog === true;
+
+        if (!shouldSkipLog) {
             await logAction(
                 'LOGIN',
                 user.uid,
