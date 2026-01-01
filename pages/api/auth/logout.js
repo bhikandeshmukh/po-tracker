@@ -33,9 +33,12 @@ export default async function handler(req, res) {
         // Revoke all refresh tokens for the user
         await auth.revokeRefreshTokens(user.uid);
 
+        // Determine action based on reason
+        const action = req.body.reason === 'SYSTEM' ? 'SYSTEM_LOGOUT' : 'LOGOUT';
+
         // Create audit log using centralized logger
         await logAction(
-            'LOGOUT',
+            action,
             user.uid,
             'USER',
             user.uid,

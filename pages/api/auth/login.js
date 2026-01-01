@@ -17,6 +17,7 @@ export default async function handler(req, res) {
     }
 
     try {
+        console.log('[DEBUG] Login API called. Body:', req.body);
         // Verify the user is already authenticated (logged in via frontend)
         const user = await verifyAuth(req);
 
@@ -64,18 +65,20 @@ export default async function handler(req, res) {
         });
 
         // Create audit log using centralized logger
-        await logAction(
-            'LOGIN',
-            user.uid,
-            'USER',
-            user.uid,
-            { after: { email: userData.email, name: userData.name } },
-            {
-                ipAddress: getIpAddress(req),
-                userAgent: getUserAgent(req),
-                userRole: userData.role
-            }
-        );
+        if (!req.body.skipLog) {
+            await logAction(
+                'LOGIN',
+                user.uid,
+                'USER',
+                user.uid,
+                { after: { email: userData.email, name: userData.name } },
+                {
+                    ipAddress: getIpAddress(req),
+                    userAgent: getUserAgent(req),
+                    userRole: userData.role
+                }
+            );
+        }
 
         return res.status(200).json({
             success: true,
