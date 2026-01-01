@@ -87,7 +87,7 @@ export default function Vendors() {
         <Layout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between sticky top-0 bg-gray-50 z-10 py-4 -mt-6 -mx-6 px-6">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Vendors</h1>
                         <p className="text-gray-600 mt-1">Manage your vendor relationships</p>
@@ -201,8 +201,8 @@ export default function Vendors() {
                                         {vendor.totalOrders || 0} orders
                                     </span>
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${vendor.isActive
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-gray-100 text-gray-800'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-800'
                                         }`}>
                                         {vendor.isActive ? 'Active' : 'Inactive'}
                                     </span>

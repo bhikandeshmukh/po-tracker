@@ -224,7 +224,7 @@ export default function PurchaseOrders() {
             <Layout>
                 <div className="space-y-6">
                     {/* Header */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between sticky top-0 bg-gray-50 z-10 py-4 -mt-6 -mx-6 px-6">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Purchase Orders</h1>
                             <p className="text-gray-600 mt-1">Manage and track all purchase orders</p>
@@ -346,9 +346,9 @@ export default function PurchaseOrders() {
                             </div>
                         ) : (
                             <>
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
                                     <table className="w-full">
-                                        <thead className="bg-gray-50 border-b border-gray-200">
+                                        <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                             <tr>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     PO Number
