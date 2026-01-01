@@ -86,9 +86,8 @@ export default function Layout({ children }) {
 
     const handleResultClick = (link) => {
         router.push(link);
-        setSearchQuery('');
+        // Do not clear search query or results to maintain context
         setShowResults(false);
-        setSearchResults([]);
     };
 
     const activeItem = navigation.find(item => router.pathname.startsWith(item.href));
