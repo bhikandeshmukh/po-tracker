@@ -46,12 +46,7 @@ export default function Shipments() {
         fetchShipments();
     }, [fetchShipments]);
 
-    // Refetch when page becomes visible (tab switch, navigation back)
-    useEffect(() => {
-        const handleFocus = () => fetchShipments();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [fetchShipments]);
+
 
     const handleBulkImport = async (data) => {
         try {

@@ -34,12 +34,7 @@ export default function Vendors() {
         fetchVendors();
     }, [fetchVendors]);
 
-    // Refetch when page becomes visible
-    useEffect(() => {
-        const handleFocus = () => fetchVendors();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [fetchVendors]);
+
 
     const handleBulkImport = async (data) => {
         try {
@@ -67,10 +62,10 @@ export default function Vendors() {
                     results.push({ success: false, row, error: err.message });
                 }
             }
-            
+
             const successCount = results.filter(r => r.success).length;
             await fetchVendors(); // Refresh list
-            
+
             return {
                 success: true,
                 message: `Imported ${successCount} out of ${data.length} vendors`
@@ -205,11 +200,10 @@ export default function Vendors() {
                                     <span className="text-sm text-gray-500">
                                         {vendor.totalOrders || 0} orders
                                     </span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        vendor.isActive
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${vendor.isActive
                                             ? 'bg-green-100 text-green-800'
                                             : 'bg-gray-100 text-gray-800'
-                                    }`}>
+                                        }`}>
                                         {vendor.isActive ? 'Active' : 'Inactive'}
                                     </span>
                                 </div>

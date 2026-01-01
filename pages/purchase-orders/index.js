@@ -10,11 +10,11 @@ import POExcelImport from '../../components/PurchaseOrders/POExcelImport';
 import { TableSkeleton } from '../../components/Common/LoadingSkeleton';
 import { exportPOsToCSV } from '../../lib/pdf-export';
 import { formatDate } from '../../lib/date-utils';
-import { 
-    Package, 
-    Plus, 
-    Search, 
-    Filter, 
+import {
+    Package,
+    Plus,
+    Search,
+    Filter,
     Download,
     Eye,
     Edit,
@@ -74,7 +74,7 @@ export default function PurchaseOrders() {
             if (response.success) {
                 setOrders(response.data || []);
                 setPagination(response.pagination);
-                
+
                 if (response.pagination?.nextCursor) {
                     setNextCursor(response.pagination.nextCursor);
                 } else {
@@ -93,12 +93,7 @@ export default function PurchaseOrders() {
         fetchOrders();
     }, [fetchOrders]);
 
-    // Refetch when page becomes visible
-    useEffect(() => {
-        const handleFocus = () => fetchOrders();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [fetchOrders]);
+
 
     const handleNextPage = () => {
         if (nextCursor) {
@@ -134,10 +129,10 @@ export default function PurchaseOrders() {
         try {
             console.log('Import data received:', data.length, 'rows');
             console.log('All rows:', JSON.stringify(data, null, 2));
-            
+
             // Group rows by poNumber
             const poGroups = {};
-            
+
             data.forEach((row, index) => {
                 console.log(`Processing row ${index}:`, row);
                 if (!poGroups[row.poNumber]) {
@@ -152,7 +147,7 @@ export default function PurchaseOrders() {
                         items: []
                     };
                 }
-                
+
                 // Add item to PO
                 poGroups[row.poNumber].items.push({
                     poQuantity: parseInt(row.poQty) || 0,
@@ -161,7 +156,7 @@ export default function PurchaseOrders() {
                     deliveredQuantity: parseInt(row.deliveredQty) || 0
                 });
             });
-            
+
             // Create each PO
             const results = [];
             for (const po of Object.values(poGroups)) {
@@ -170,13 +165,13 @@ export default function PurchaseOrders() {
                     console.log('Items is array?', Array.isArray(po.items));
                     console.log('PO object type:', typeof po);
                     console.log('PO keys:', Object.keys(po));
-                    
+
                     // Ensure items is an array
                     if (!Array.isArray(po.items)) {
                         console.error('Items is not an array!', po.items);
                         throw new Error('Items must be an array');
                     }
-                    
+
                     const response = await apiClient.createPO(po);
                     results.push({ success: response.success, poNumber: po.poNumber });
                 } catch (err) {
@@ -188,29 +183,29 @@ export default function PurchaseOrders() {
                     results.push({ success: false, poNumber: po.poNumber, error: err.message, details: err.details });
                 }
             }
-            
+
             const successCount = results.filter(r => r.success).length;
             const totalPOs = Object.keys(poGroups).length;
             const failedResults = results.filter(r => !r.success);
-            
+
             await fetchOrders();
-            
+
             if (failedResults.length > 0) {
                 // Show detailed error for first failed PO
                 const firstError = failedResults[0];
                 const errorMsg = `Failed to import ${failedResults.length} PO(s). First error (${firstError.poNumber}): ${firstError.error}`;
                 const errorDetails = firstError.details ? JSON.stringify(firstError.details, null, 2) : '';
-                
+
                 return {
                     success: false,
                     error: errorMsg,
                     details: firstError.details
                 };
             }
-            
-            return { 
-                success: true, 
-                message: `Imported ${successCount} out of ${totalPOs} purchase orders with ${data.length} total items` 
+
+            return {
+                success: true,
+                message: `Imported ${successCount} out of ${totalPOs} purchase orders with ${data.length} total items`
             };
         } catch (error) {
             return { success: false, error: error.message };
@@ -228,49 +223,49 @@ export default function PurchaseOrders() {
         <ProtectedRoute>
             <Layout>
                 <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Purchase Orders</h1>
-                        <p className="text-gray-600 mt-1">Manage and track all purchase orders</p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
-                                setPrevCursors([]);
-                                setNextCursor(null);
-                            }}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="approved">Approved</option>
-                            <option value="partial_sent">Partial Sent</option>
-                            <option value="partial_completed">Partial Completed</option>
-                            <option value="completed">Completed</option>
-                            <option value="closed">Closed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                        {orders.length > 0 && (
-                            <button
-                                onClick={() => exportPOsToCSV(orders)}
-                                className="flex items-center space-x-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">Purchase Orders</h1>
+                            <p className="text-gray-600 mt-1">Manage and track all purchase orders</p>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
+                                    setPrevCursors([]);
+                                    setNextCursor(null);
+                                }}
+                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             >
-                                <FileDown className="w-4 h-4" />
-                                <span>Export CSV</span>
+                                <option value="all">All Status</option>
+                                <option value="draft">Draft</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="approved">Approved</option>
+                                <option value="partial_sent">Partial Sent</option>
+                                <option value="partial_completed">Partial Completed</option>
+                                <option value="completed">Completed</option>
+                                <option value="closed">Closed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            {orders.length > 0 && (
+                                <button
+                                    onClick={() => exportPOsToCSV(orders)}
+                                    className="flex items-center space-x-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                    <FileDown className="w-4 h-4" />
+                                    <span>Export CSV</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setShowImportModal(true)}
+                                className="flex items-center space-x-2 border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition"
+                            >
+                                <Upload className="w-5 h-5" />
+                                <span>Import Excel</span>
                             </button>
-                        )}
-                        <button
-                            onClick={() => setShowImportModal(true)}
-                            className="flex items-center space-x-2 border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition"
-                        >
-                            <Upload className="w-5 h-5" />
-                            <span>Import Excel</span>
-                        </button>
-                        {/* Old import component - keeping as fallback
+                            {/* Old import component - keeping as fallback
                         <ExcelImportWithAPI
                             onImport={handleBulkImportWithItems}
                             moduleName="Purchase Orders"
@@ -320,203 +315,203 @@ export default function PurchaseOrders() {
                                 'price'
                             ]}
                         /> */}
-                        <button
-                            onClick={() => router.push('/purchase-orders/create')}
-                            className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
-                        >
-                            <Plus className="w-5 h-5" />
-                            <span>Create PO</span>
-                        </button>
+                            <button
+                                onClick={() => router.push('/purchase-orders/create')}
+                                className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
+                            >
+                                <Plus className="w-5 h-5" />
+                                <span>Create PO</span>
+                            </button>
+                        </div>
+                    </div>
+
+
+
+                    {/* Table */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        {loading ? (
+                            <TableSkeleton rows={10} columns={6} />
+                        ) : orders.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No purchase orders found</h3>
+                                <p className="text-gray-500 mb-6">Get started by creating your first purchase order</p>
+                                <button
+                                    onClick={() => router.push('/purchase-orders/create')}
+                                    className="inline-flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>Create Purchase Order</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 border-b border-gray-200">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    PO Number
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Vendor
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Warehouse
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Date
+                                                </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Total Qty
+                                                </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Sent Qty
+                                                </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Pending Qty
+                                                </th>
+
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {orders.map((order) => {
+                                                const StatusIcon = statusIcons[order.status] || Clock;
+                                                const statusColor = statusColors[order.status] || 'bg-gray-100 text-gray-800';
+
+                                                return (
+                                                    <tr key={order.poId} className="hover:bg-gray-50 transition">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <Package className="w-5 h-5 text-gray-400 mr-2" />
+                                                                <span className="text-sm font-medium text-gray-900">
+                                                                    {order.poNumber}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="text-sm text-gray-900">{order.vendorName}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="text-sm text-gray-600">{order.vendorWarehouseName || 'N/A'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="text-sm text-gray-500">
+                                                                {formatDate(order.poDate)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {order.totalQuantity || 0}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <span className="text-sm font-medium text-green-600">
+                                                                {order.shippedQuantity || 0}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <span className="text-sm font-medium text-orange-600">
+                                                                {order.pendingQuantity || 0}
+                                                            </span>
+                                                        </td>
+
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                                                <StatusIcon className="w-3 h-3" />
+                                                                <span className="capitalize">{order.status.replace('_', ' ')}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            <div className="flex items-center space-x-2">
+                                                                <button
+                                                                    onClick={() => router.push(`/purchase-orders/${order.poId}`)}
+                                                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                                                    title="View"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => router.push(`/purchase-orders/${order.poId}/edit`)}
+                                                                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination */}
+                                {pagination && (pagination.hasMore || prevCursors.length > 0) && (
+                                    <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="text-sm text-gray-500">
+                                                Showing {pagination.count} results
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <label htmlFor="rowsPerPage" className="text-sm text-gray-600">
+                                                    Rows per page:
+                                                </label>
+                                                <select
+                                                    id="rowsPerPage"
+                                                    value={rowsPerPage}
+                                                    onChange={(e) => {
+                                                        setRowsPerPage(Number(e.target.value));
+                                                        setPrevCursors([]);
+                                                        setNextCursor(null);
+                                                    }}
+                                                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                >
+                                                    <option value={10}>10</option>
+                                                    <option value={30}>30</option>
+                                                    <option value={50}>50</option>
+                                                    <option value={70}>70</option>
+                                                    <option value={100}>100</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={handlePrevPage}
+                                                disabled={prevCursors.length === 0}
+                                                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                onClick={handleNextPage}
+                                                disabled={!pagination.hasMore}
+                                                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
 
-
-
-                {/* Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    {loading ? (
-                        <TableSkeleton rows={10} columns={6} />
-                    ) : orders.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">No purchase orders found</h3>
-                            <p className="text-gray-500 mb-6">Get started by creating your first purchase order</p>
-                            <button
-                                onClick={() => router.push('/purchase-orders/create')}
-                                className="inline-flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>Create Purchase Order</span>
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                PO Number
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Vendor
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Warehouse
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Date
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Total Qty
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Sent Qty
-                                            </th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Pending Qty
-                                            </th>
-
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Status
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {orders.map((order) => {
-                                            const StatusIcon = statusIcons[order.status] || Clock;
-                                            const statusColor = statusColors[order.status] || 'bg-gray-100 text-gray-800';
-                                            
-                                            return (
-                                                <tr key={order.poId} className="hover:bg-gray-50 transition">
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <Package className="w-5 h-5 text-gray-400 mr-2" />
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {order.poNumber}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="text-sm text-gray-900">{order.vendorName}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="text-sm text-gray-600">{order.vendorWarehouseName || 'N/A'}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="text-sm text-gray-500">
-                                                            {formatDate(order.poDate)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <span className="text-sm font-medium text-gray-900">
-                                                            {order.totalQuantity || 0}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <span className="text-sm font-medium text-green-600">
-                                                            {order.shippedQuantity || 0}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <span className="text-sm font-medium text-orange-600">
-                                                            {order.pendingQuantity || 0}
-                                                        </span>
-                                                    </td>
-
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                                                            <StatusIcon className="w-3 h-3" />
-                                                            <span className="capitalize">{order.status.replace('_', ' ')}</span>
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        <div className="flex items-center space-x-2">
-                                                            <button
-                                                                onClick={() => router.push(`/purchase-orders/${order.poId}`)}
-                                                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                                                                title="View"
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => router.push(`/purchase-orders/${order.poId}/edit`)}
-                                                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                                                                title="Edit"
-                                                            >
-                                                                <Edit className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Pagination */}
-                            {pagination && (pagination.hasMore || prevCursors.length > 0) && (
-                                <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="text-sm text-gray-500">
-                                            Showing {pagination.count} results
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <label htmlFor="rowsPerPage" className="text-sm text-gray-600">
-                                                Rows per page:
-                                            </label>
-                                            <select
-                                                id="rowsPerPage"
-                                                value={rowsPerPage}
-                                                onChange={(e) => {
-                                                    setRowsPerPage(Number(e.target.value));
-                                                    setPrevCursors([]);
-                                                    setNextCursor(null);
-                                                }}
-                                                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                            >
-                                                <option value={10}>10</option>
-                                                <option value={30}>30</option>
-                                                <option value={50}>50</option>
-                                                <option value={70}>70</option>
-                                                <option value={100}>100</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={handlePrevPage}
-                                            disabled={prevCursors.length === 0}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                        >
-                                            Previous
-                                        </button>
-                                        <button
-                                            onClick={handleNextPage}
-                                            disabled={!pagination.hasMore}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                        >
-                                            Next
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Import Modal */}
-            {showImportModal && (
-                <POExcelImport
-                    onImport={handleBulkImportWithItems}
-                    onClose={() => setShowImportModal(false)}
-                />
-            )}
+                {/* Import Modal */}
+                {showImportModal && (
+                    <POExcelImport
+                        onImport={handleBulkImportWithItems}
+                        onClose={() => setShowImportModal(false)}
+                    />
+                )}
             </Layout>
         </ProtectedRoute>
     );

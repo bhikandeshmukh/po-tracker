@@ -239,12 +239,7 @@ export default function Appointments() {
         fetchAppointments();
     }, [fetchAppointments]);
 
-    // Refetch when page becomes visible
-    useEffect(() => {
-        const handleFocus = () => fetchAppointments();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [fetchAppointments]);
+
 
     const handleDownloadPDF = async (appointment) => {
         console.log('Downloading PDF for:', appointment.appointmentNumber);
