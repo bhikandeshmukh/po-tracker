@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://potracker.vercel.app/sitemap.xml
