@@ -78,7 +78,7 @@ export default function Shipments() {
         <Layout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between sticky top-0 bg-gray-50 z-10 py-4 -mt-6 -mx-6 px-6">
+                <div className="flex items-center justify-between sticky top-16 bg-gray-50 z-10 py-4 -mt-6 -mx-6 px-6">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Shipments</h1>
                         <p className="text-gray-600 mt-1">Track all shipments and deliveries</p>
