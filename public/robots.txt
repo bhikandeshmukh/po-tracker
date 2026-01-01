@@ -1,3 +1,17 @@
 User-agent: *
 Allow: /
+
+# Private System Paths
+Disallow: /api/
+Disallow: /_next/
+
+# Admin Area
+Disallow: /admin/
+Disallow: /audit-logs/
+
+# User Specific / Private Areas (Optional but good practice)
+Disallow: /dashboard
+Disallow: /activity
+Disallow: /users
+
 Sitemap: https://potracker.vercel.app/sitemap.xml
