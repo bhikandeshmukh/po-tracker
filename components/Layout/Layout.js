@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import Head from 'next/head';
 import { useAuth } from '../../lib/auth-client';
 import apiClient from '../../lib/api-client';
 import ErrorBoundary from '../Common/ErrorBoundary';
@@ -90,8 +91,21 @@ export default function Layout({ children }) {
         setSearchResults([]);
     };
 
+    const activeItem = navigation.find(item => router.pathname.startsWith(item.href));
+    const title = activeItem ? `${activeItem.name} - PO Tracker` : 'PO Tracker';
+
     return (
         <div className="min-h-screen bg-gray-50">
+            <Head>
+                <title>{title}</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <meta name="description" content="Efficient Purchase Order Tracking and Management System" />
+                <meta name="keywords" content="purchase order, tracking, inventory, logistics, management" />
+                <meta name="author" content="Bhikan Deshmukh" />
+                <meta property="og:title" content={title} />
+                <meta property="og:description" content="Efficient Purchase Order Tracking and Management System" />
+                <meta property="og:type" content="website" />
+            </Head>
             {/* Mobile sidebar backdrop */}
             {sidebarOpen && (
                 <div
