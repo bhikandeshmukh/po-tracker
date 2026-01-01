@@ -45,25 +45,25 @@ async function getQuantityChartData(period) {
     const now = new Date();
     let chartData = [];
     let totals = { orderQty: 0, shippedQty: 0, deliveredQty: 0 };
-    
+
     // Get all POs and shipments
     const posSnapshot = await db.collection('purchaseOrders').get();
     const shipmentsSnapshot = await db.collection('shipments').get();
-    
+
     if (period === '30days') {
         // Last 30 days - daily data
         const dailyData = {};
         const startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 29);
         startDate.setHours(0, 0, 0, 0);
-        
+
         // Create daily buckets for last 30 days
         for (let i = 0; i < 30; i++) {
             const dayDate = new Date(startDate);
             dayDate.setDate(startDate.getDate() + i);
             const dayKey = dayDate.toISOString().split('T')[0];
             const dayLabel = dayDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-            
+
             dailyData[dayKey] = {
                 month: dayLabel,
                 orderQty: 0,
@@ -71,16 +71,16 @@ async function getQuantityChartData(period) {
                 deliveredQty: 0
             };
         }
-        
+
         // Process POs for last 30 days
         posSnapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.status === 'cancelled') return;
-            
+
             let poDate = data.poDate;
             if (poDate?.toDate) poDate = poDate.toDate();
             else if (typeof poDate === 'string') poDate = new Date(poDate);
-            
+
             if (poDate && !isNaN(poDate.getTime()) && poDate >= startDate) {
                 const dayKey = poDate.toISOString().split('T')[0];
                 if (dailyData[dayKey]) {
@@ -89,15 +89,16 @@ async function getQuantityChartData(period) {
                 }
             }
         });
-        
+
         // Process Shipments for delivered qty in last 30 days
         shipmentsSnapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.status === 'delivered') {
-                let deliveryDate = data.deliveryDate || data.shipmentDate;
+                // Use expectedDeliveryDate (appointment date) as requested
+                let deliveryDate = data.expectedDeliveryDate || data.deliveryDate || data.shipmentDate;
                 if (deliveryDate?.toDate) deliveryDate = deliveryDate.toDate();
                 else if (typeof deliveryDate === 'string') deliveryDate = new Date(deliveryDate);
-                
+
                 if (deliveryDate && !isNaN(deliveryDate.getTime()) && deliveryDate >= startDate) {
                     const dayKey = deliveryDate.toISOString().split('T')[0];
                     if (dailyData[dayKey]) {
@@ -106,13 +107,13 @@ async function getQuantityChartData(period) {
                 }
             }
         });
-        
+
         // Convert to array and calculate totals
         for (let i = 0; i < 30; i++) {
             const dayDate = new Date(startDate);
             dayDate.setDate(startDate.getDate() + i);
             const dayKey = dayDate.toISOString().split('T')[0];
-            
+
             if (dailyData[dayKey]) {
                 chartData.push(dailyData[dayKey]);
                 totals.orderQty += dailyData[dayKey].orderQty;
@@ -124,7 +125,7 @@ async function getQuantityChartData(period) {
         // Monthly data (6months, 12months, thisYear)
         const months = period === '12months' ? 12 : period === 'thisYear' ? now.getMonth() + 1 : 6;
         const monthlyData = {};
-        
+
         let startMonth, startYear;
         if (period === 'thisYear') {
             startMonth = 0;
@@ -134,7 +135,7 @@ async function getQuantityChartData(period) {
             startMonth = startDate.getMonth();
             startYear = startDate.getFullYear();
         }
-        
+
         // Create monthly buckets
         for (let i = 0; i < months; i++) {
             let monthDate;
@@ -145,7 +146,7 @@ async function getQuantityChartData(period) {
             }
             const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
             const monthName = monthDate.toLocaleString('default', { month: 'short' });
-            
+
             monthlyData[monthKey] = {
                 month: monthName,
                 orderQty: 0,
@@ -153,20 +154,20 @@ async function getQuantityChartData(period) {
                 deliveredQty: 0
             };
         }
-        
-        const startDate = period === 'thisYear' 
+
+        const startDate = period === 'thisYear'
             ? new Date(now.getFullYear(), 0, 1)
             : new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
-        
+
         // Process POs
         posSnapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.status === 'cancelled') return;
-            
+
             let poDate = data.poDate;
             if (poDate?.toDate) poDate = poDate.toDate();
             else if (typeof poDate === 'string') poDate = new Date(poDate);
-            
+
             if (poDate && !isNaN(poDate.getTime()) && poDate >= startDate) {
                 const monthKey = `${poDate.getFullYear()}-${String(poDate.getMonth() + 1).padStart(2, '0')}`;
                 if (monthlyData[monthKey]) {
@@ -175,15 +176,16 @@ async function getQuantityChartData(period) {
                 }
             }
         });
-        
+
         // Process Shipments for delivered qty
         shipmentsSnapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.status === 'delivered') {
-                let deliveryDate = data.deliveryDate || data.shipmentDate;
+                // Use expectedDeliveryDate (appointment date) as requested
+                let deliveryDate = data.expectedDeliveryDate || data.deliveryDate || data.shipmentDate;
                 if (deliveryDate?.toDate) deliveryDate = deliveryDate.toDate();
                 else if (typeof deliveryDate === 'string') deliveryDate = new Date(deliveryDate);
-                
+
                 if (deliveryDate && !isNaN(deliveryDate.getTime()) && deliveryDate >= startDate) {
                     const monthKey = `${deliveryDate.getFullYear()}-${String(deliveryDate.getMonth() + 1).padStart(2, '0')}`;
                     if (monthlyData[monthKey]) {
@@ -192,7 +194,7 @@ async function getQuantityChartData(period) {
                 }
             }
         });
-        
+
         // Convert to array and calculate totals
         for (let i = 0; i < months; i++) {
             let monthDate;
@@ -202,7 +204,7 @@ async function getQuantityChartData(period) {
                 monthDate = new Date(now.getFullYear(), now.getMonth() - months + 1 + i, 1);
             }
             const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-            
+
             if (monthlyData[monthKey]) {
                 chartData.push(monthlyData[monthKey]);
                 totals.orderQty += monthlyData[monthKey].orderQty;
@@ -211,12 +213,12 @@ async function getQuantityChartData(period) {
             }
         }
     }
-    
+
     totals.pendingQty = Math.max(0, totals.orderQty - totals.shippedQty);
-    
+
     // Calculate previous period totals for comparison
     const prevTotals = await getPreviousPeriodTotals(period, posSnapshot, shipmentsSnapshot);
-    
+
     // Calculate percentage changes
     const changes = {
         orderQtyChange: calculatePercentChange(totals.orderQty, prevTotals.orderQty),
@@ -224,7 +226,7 @@ async function getQuantityChartData(period) {
         pendingQtyChange: calculatePercentChange(totals.pendingQty, prevTotals.pendingQty),
         deliveredQtyChange: calculatePercentChange(totals.deliveredQty, prevTotals.deliveredQty)
     };
-    
+
     return { chartData, totals, changes, prevTotals };
 }
 
@@ -239,13 +241,13 @@ async function getPreviousPeriodTotals(period, posSnapshot, shipmentsSnapshot) {
     const now = new Date();
     let prevTotals = { orderQty: 0, shippedQty: 0, deliveredQty: 0, pendingQty: 0 };
     let prevStartDate, prevEndDate;
-    
+
     if (period === '30days') {
         // Previous 30 days (day 31-60 ago)
         prevEndDate = new Date(now);
         prevEndDate.setDate(prevEndDate.getDate() - 30);
         prevEndDate.setHours(23, 59, 59, 999);
-        
+
         prevStartDate = new Date(now);
         prevStartDate.setDate(prevStartDate.getDate() - 59);
         prevStartDate.setHours(0, 0, 0, 0);
@@ -262,37 +264,38 @@ async function getPreviousPeriodTotals(period, posSnapshot, shipmentsSnapshot) {
         prevStartDate = new Date(now.getFullYear() - 1, 0, 1);
         prevEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
     }
-    
+
     // Process POs for previous period
     posSnapshot.docs.forEach(doc => {
         const data = doc.data();
         if (data.status === 'cancelled') return;
-        
+
         let poDate = data.poDate;
         if (poDate?.toDate) poDate = poDate.toDate();
         else if (typeof poDate === 'string') poDate = new Date(poDate);
-        
+
         if (poDate && !isNaN(poDate.getTime()) && poDate >= prevStartDate && poDate <= prevEndDate) {
             prevTotals.orderQty += data.totalQuantity || 0;
             prevTotals.shippedQty += data.shippedQuantity || 0;
         }
     });
-    
+
     // Process Shipments for previous period delivered qty
     shipmentsSnapshot.docs.forEach(doc => {
         const data = doc.data();
         if (data.status === 'delivered') {
-            let deliveryDate = data.deliveryDate || data.shipmentDate;
+            // Use expectedDeliveryDate (appointment date) as requested
+            let deliveryDate = data.expectedDeliveryDate || data.deliveryDate || data.shipmentDate;
             if (deliveryDate?.toDate) deliveryDate = deliveryDate.toDate();
             else if (typeof deliveryDate === 'string') deliveryDate = new Date(deliveryDate);
-            
+
             if (deliveryDate && !isNaN(deliveryDate.getTime()) && deliveryDate >= prevStartDate && deliveryDate <= prevEndDate) {
                 prevTotals.deliveredQty += (data.deliveredQuantity !== undefined ? data.deliveredQuantity : data.totalQuantity) || 0;
             }
         }
     });
-    
+
     prevTotals.pendingQty = Math.max(0, prevTotals.orderQty - prevTotals.shippedQty);
-    
+
     return prevTotals;
 }
