@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const shouldSkipLog = req.query.skipLog === 'true' || req.body?.skipLog === true;
+        let shouldSkipLog = req.query.skipLog === 'true' || req.body?.skipLog === true;
         console.log(`[DEBUG] Login API called. shouldSkipLog: ${shouldSkipLog}, Body:`, req.body, 'Query:', req.query);
         // Verify the user is already authenticated (logged in via frontend)
         const user = await verifyAuth(req);
