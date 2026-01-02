@@ -369,8 +369,47 @@ async function updateShipment(req, res, shipmentId, user) {
             }
         }
 
-        // If status is updated to delivered, update PO delivered quantity
+        // If status is updated to delivered, update PO delivered quantity and shipment items
         if (updateData.status === 'delivered' && updateData.deliveredQuantity !== undefined) {
+            // Update shipment items with delivered quantity
+            try {
+                const itemsSnapshot = await db.collection('shipments')
+                    .doc(shipmentId)
+                    .collection('items')
+                    .get();
+
+                if (!itemsSnapshot.empty) {
+                    const batch = db.batch();
+                    const totalShippedQty = shipmentData.totalQuantity || 0;
+                    const totalDeliveredQty = updateData.deliveredQuantity;
+
+                    // Distribute delivered quantity proportionally across items
+                    itemsSnapshot.docs.forEach(itemDoc => {
+                        const itemData = itemDoc.data();
+                        const itemShippedQty = itemData.shippedQuantity || 0;
+
+                        // Calculate proportional delivered qty for this item
+                        let itemDeliveredQty;
+                        if (totalShippedQty > 0) {
+                            itemDeliveredQty = Math.round((itemShippedQty / totalShippedQty) * totalDeliveredQty);
+                        } else {
+                            itemDeliveredQty = totalDeliveredQty;
+                        }
+
+                        batch.update(itemDoc.ref, {
+                            deliveredQuantity: itemDeliveredQty,
+                            updatedAt: new Date()
+                        });
+                    });
+
+                    await batch.commit();
+                    console.log(`Updated ${itemsSnapshot.size} shipment items with delivered quantities`);
+                }
+            } catch (err) {
+                console.error('Failed to update shipment items delivered quantity:', err);
+            }
+
+            // Update PO delivered quantity and PO items
             if (shipmentData.poId) {
                 try {
                     const poRef = db.collection('purchaseOrders').doc(shipmentData.poId);
@@ -378,13 +417,50 @@ async function updateShipment(req, res, shipmentId, user) {
                     if (poDoc.exists) {
                         const poData = poDoc.data();
                         const currentDelivered = poData.deliveredQuantity || 0;
-                        // For simplicity, we add the shipment's delivered quantity to the PO's total
-                        // Note: To be more robust, we should calculate from all shipments if this is a correction
+
+                        // Update PO total delivered quantity
                         await poRef.update({
                             deliveredQuantity: currentDelivered + updateData.deliveredQuantity,
                             updatedAt: new Date()
                         });
                         console.log(`Updated PO ${shipmentData.poId} delivered quantity (+${updateData.deliveredQuantity})`);
+
+                        // Also update PO items with delivered quantities
+                        // Fetch shipment items to know how much was delivered for each
+                        const shipmentItemsSnapshot = await db.collection('shipments')
+                            .doc(shipmentId)
+                            .collection('items')
+                            .get();
+
+                        if (!shipmentItemsSnapshot.empty) {
+                            const batch = db.batch();
+
+                            for (const shipmentItemDoc of shipmentItemsSnapshot.docs) {
+                                const shipmentItemData = shipmentItemDoc.data();
+                                const itemDeliveredQty = shipmentItemData.deliveredQuantity || 0;
+                                const poItemId = shipmentItemData.itemId || shipmentItemDoc.id;
+
+                                // Update the corresponding PO item
+                                const poItemRef = db.collection('purchaseOrders')
+                                    .doc(shipmentData.poId)
+                                    .collection('items')
+                                    .doc(poItemId);
+
+                                const poItemDoc = await poItemRef.get();
+                                if (poItemDoc.exists) {
+                                    const poItemData = poItemDoc.data();
+                                    const currentItemDelivered = poItemData.deliveredQuantity || 0;
+
+                                    batch.update(poItemRef, {
+                                        deliveredQuantity: currentItemDelivered + itemDeliveredQty,
+                                        updatedAt: new Date()
+                                    });
+                                }
+                            }
+
+                            await batch.commit();
+                            console.log(`Updated PO items delivered quantities`);
+                        }
                     }
                 } catch (err) {
                     console.error('Failed to update PO delivered quantity:', err);

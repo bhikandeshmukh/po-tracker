@@ -369,6 +369,9 @@ export default function PurchaseOrders() {
                                                     Sent Qty
                                                 </th>
                                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Delivered Qty
+                                                </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Pending Qty
                                                 </th>
 
@@ -414,6 +417,11 @@ export default function PurchaseOrders() {
                                                         <td className="px-6 py-4 whitespace-nowrap text-right">
                                                             <span className="text-sm font-medium text-green-600">
                                                                 {order.shippedQuantity || 0}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <span className="text-sm font-medium text-blue-600">
+                                                                {order.deliveredQuantity || 0}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right">
