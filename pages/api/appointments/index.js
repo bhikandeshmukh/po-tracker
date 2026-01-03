@@ -95,6 +95,28 @@ async function getAppointments(req, res, user) {
 }
 
 
+async function generateAppointmentNumber() {
+    const counterRef = db.collection('counters').doc('appointments');
+    
+    return await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        
+        let nextNumber = 1;
+        if (counterDoc.exists) {
+            nextNumber = (counterDoc.data().lastNumber || 0) + 1;
+        }
+        
+        transaction.set(counterRef, { lastNumber: nextNumber, updatedAt: new Date() });
+        
+        // Format: APT-YYYYMMDD-XXXX (e.g., APT-20260103-0001)
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const paddedNumber = String(nextNumber).padStart(4, '0');
+        
+        return `APT-${dateStr}-${paddedNumber}`;
+    });
+}
+
 async function createAppointment(req, res, user) {
     const {
         shipmentId,
@@ -115,6 +137,7 @@ async function createAppointment(req, res, user) {
     }
 
     // Validate shipment exists if provided
+    let shipmentData = null;
     if (shipmentId) {
         const shipmentDoc = await db.collection('shipments').doc(shipmentId).get();
         if (!shipmentDoc.exists) {
@@ -123,11 +146,24 @@ async function createAppointment(req, res, user) {
                 error: { code: 'NOT_FOUND', message: 'Shipment not found' }
             });
         }
+        shipmentData = shipmentDoc.data();
     }
 
+    // Generate appointment number
+    const appointmentNumber = await generateAppointmentNumber();
     const now = new Date();
+    
     const appointmentData = {
+        appointmentId: appointmentNumber,
+        appointmentNumber: appointmentNumber,
         shipmentId: shipmentId || null,
+        shipmentNumber: shipmentData?.shipmentNumber || '',
+        poId: shipmentData?.poId || '',
+        poNumber: shipmentData?.poNumber || '',
+        vendorId: shipmentData?.vendorId || '',
+        vendorName: shipmentData?.vendorName || '',
+        transporterId: shipmentData?.transporterId || '',
+        transporterName: shipmentData?.transporterName || '',
         lrDocketNumber: lrDocketNumber || '',
         scheduledDate: new Date(scheduledDate),
         scheduledTimeSlot: scheduledTimeSlot || '',
@@ -140,13 +176,13 @@ async function createAppointment(req, res, user) {
         updatedAt: now
     };
 
-    const docRef = await db.collection('appointments').add(appointmentData);
+    // Use the appointment number as document ID
+    await db.collection('appointments').doc(appointmentNumber).set(appointmentData);
 
     return res.status(201).json({
         success: true,
         data: {
-            id: docRef.id,
-            appointmentId: docRef.id,
+            id: appointmentNumber,
             ...appointmentData,
             scheduledDate: appointmentData.scheduledDate.toISOString(),
             createdAt: appointmentData.createdAt.toISOString(),

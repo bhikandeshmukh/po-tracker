@@ -28,9 +28,11 @@ export default function PODetail() {
         shippedQty: '',
         docketNumber: '',
         invoiceNumber: '',
-        notes: ''
+        notes: '',
+        linkedAppointmentId: ''
     });
     const [createShipmentLoading, setCreateShipmentLoading] = useState(false);
+    const [unlinkedAppointments, setUnlinkedAppointments] = useState([]);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [commentLoading, setCommentLoading] = useState(false);
@@ -374,6 +376,23 @@ export default function PODetail() {
         fetchTransporters();
     }, []);
 
+    // Fetch unlinked appointments for dropdown
+    useEffect(() => {
+        const fetchUnlinkedAppointments = async () => {
+            try {
+                const response = await apiClient.get('/appointments/unlinked');
+                if (response.success) {
+                    setUnlinkedAppointments(response.data || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch unlinked appointments:', error);
+            }
+        };
+        if (showCreateShipment) {
+            fetchUnlinkedAppointments();
+        }
+    }, [showCreateShipment]);
+
     const handleCreateShipment = async (e) => {
         e.preventDefault();
 
@@ -400,6 +419,7 @@ export default function PODetail() {
                 lrDocketNumber: newShipment.docketNumber,
                 invoiceNumber: newShipment.invoiceNumber,
                 notes: newShipment.notes,
+                linkedAppointmentId: newShipment.linkedAppointmentId || null,
                 items: [{
                     shippedQuantity: shippedQty,
                     deliveredQuantity: 0
@@ -417,7 +437,8 @@ export default function PODetail() {
                     shippedQty: '',
                     docketNumber: '',
                     invoiceNumber: '',
-                    notes: ''
+                    notes: '',
+                    linkedAppointmentId: ''
                 });
                 setShowCreateShipment(false);
                 // Refresh data
@@ -787,6 +808,24 @@ export default function PODetail() {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             placeholder="Enter invoice number"
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Link Appointment (Optional)
+                                        </label>
+                                        <select
+                                            value={newShipment.linkedAppointmentId}
+                                            onChange={(e) => setNewShipment({ ...newShipment, linkedAppointmentId: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value="">No appointment / Create new</option>
+                                            {unlinkedAppointments.map((apt) => (
+                                                <option key={apt.appointmentId || apt.id} value={apt.appointmentId || apt.id}>
+                                                    {apt.appointmentNumber || apt.appointmentId} - {apt.scheduledDate ? new Date(apt.scheduledDate).toLocaleDateString('en-IN') : 'No date'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-1">Select an existing unlinked appointment to link with this shipment</p>
                                     </div>
                                 </div>
                                 <div>

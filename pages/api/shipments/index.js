@@ -399,39 +399,79 @@ async function createShipment(req, res, user) {
         console.log('PO totals and status updated successfully. New status:', newPOStatus);
     }
 
-    // Create appointment
-    console.log('Creating appointment with shipmentId:', shipmentId);
+    // Create appointment or link existing one
+    console.log('Creating/linking appointment with shipmentId:', shipmentId);
+    const linkedAppointmentId = req.body.linkedAppointmentId;
 
     try {
-        const appointmentData = {
-            appointmentId: shipmentId,
-            appointmentNumber: shipmentId,
-            shipmentId: shipmentId,
-            shipmentNumber: shipmentId,
-            poId,
-            poNumber: poData.poNumber,
-            vendorId: poData.vendorId || '',
-            vendorName: poData.vendorName || '',
-            transporterId,
-            transporterName: transporterData.transporterName || '',
-            invoiceNumber: invoiceNumber || '',
-            lrDocketNumber: req.body.lrDocketNumber || '',
-            totalQuantity,
-            totalItems: processedItems.length,
-            status: 'created',
-            scheduledDate: new Date(calculatedDeliveryDate),
-            scheduledTimeSlot: '09:00-12:00',
-            deliveryLocation: shippingAddress || {},
-            notes: notes || '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdBy: user.uid
-        };
+        if (linkedAppointmentId) {
+            // Link existing appointment to this shipment and PO
+            console.log('Linking existing appointment:', linkedAppointmentId);
+            const existingAppointmentRef = db.collection('appointments').doc(linkedAppointmentId);
+            const existingAppointmentDoc = await existingAppointmentRef.get();
+            
+            if (existingAppointmentDoc.exists) {
+                await existingAppointmentRef.update({
+                    shipmentId: shipmentId,
+                    shipmentNumber: shipmentId,
+                    poId,
+                    poNumber: poData.poNumber,
+                    vendorId: poData.vendorId || '',
+                    vendorName: poData.vendorName || '',
+                    transporterId,
+                    transporterName: transporterData.transporterName || '',
+                    invoiceNumber: invoiceNumber || '',
+                    lrDocketNumber: req.body.lrDocketNumber || '',
+                    totalQuantity,
+                    totalItems: processedItems.length,
+                    status: 'created',
+                    updatedAt: new Date()
+                });
+                console.log('Existing appointment linked successfully:', linkedAppointmentId);
+                
+                // Update shipment with linked appointment ID
+                await db.collection('shipments').doc(shipmentId).update({
+                    appointmentId: linkedAppointmentId,
+                    linkedAppointmentId: linkedAppointmentId
+                });
+            } else {
+                console.log('Linked appointment not found, creating new one');
+                // Fall through to create new appointment
+            }
+        }
+        
+        // Create new appointment if no linked appointment or linked appointment not found
+        if (!linkedAppointmentId) {
+            const appointmentData = {
+                appointmentId: shipmentId,
+                appointmentNumber: shipmentId,
+                shipmentId: shipmentId,
+                shipmentNumber: shipmentId,
+                poId,
+                poNumber: poData.poNumber,
+                vendorId: poData.vendorId || '',
+                vendorName: poData.vendorName || '',
+                transporterId,
+                transporterName: transporterData.transporterName || '',
+                invoiceNumber: invoiceNumber || '',
+                lrDocketNumber: req.body.lrDocketNumber || '',
+                totalQuantity,
+                totalItems: processedItems.length,
+                status: 'created',
+                scheduledDate: new Date(calculatedDeliveryDate),
+                scheduledTimeSlot: '09:00-12:00',
+                deliveryLocation: shippingAddress || {},
+                notes: notes || '',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                createdBy: user.uid
+            };
 
-        console.log('Appointment data to be created:', JSON.stringify(appointmentData, null, 2));
+            console.log('Appointment data to be created:', JSON.stringify(appointmentData, null, 2));
 
-        await db.collection('appointments').doc(shipmentId).set(appointmentData);
-        console.log('Appointment created successfully:', shipmentId);
+            await db.collection('appointments').doc(shipmentId).set(appointmentData);
+            console.log('Appointment created successfully:', shipmentId);
+        }
     } catch (error) {
         console.error('Failed to create appointment:', error);
         console.error('Error details:', error.message, error.code);
