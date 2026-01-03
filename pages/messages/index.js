@@ -470,9 +470,6 @@ export default function MessagesPage() {
                                                     <span className="text-sm font-medium text-gray-900">
                                                         {isOwnMessage ? 'You' : message.senderName}
                                                     </span>
-                                                    <span className="text-xs text-gray-500">
-                                                        {formatTime(message.createdAt)}
-                                                    </span>
                                                 </div>
                                             )}
                                             <div className="relative flex items-center gap-2">
@@ -497,6 +494,9 @@ export default function MessagesPage() {
                                                         : 'bg-white text-gray-900 border border-gray-200 rounded-tl-md'
                                                 }`}>
                                                     <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                                                    <p className={`text-xs mt-1 ${isOwnMessage ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                                        {formatTime(message.createdAt)}
+                                                    </p>
                                                 </div>
                                                 {/* Delete button - right side for others' messages (admin only) */}
                                                 {!isOwnMessage && canDelete && (
