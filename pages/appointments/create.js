@@ -11,8 +11,10 @@ export default function CreateAppointment() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
+        newAppointmentId: '',
         shipmentId: '',
         lrDocketNumber: '',
+        invoiceNumber: '',
         appointmentDate: '',
         timeSlot: '',
         location: '',
@@ -22,6 +24,12 @@ export default function CreateAppointment() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!formData.newAppointmentId) {
+            setError('Appointment ID is required');
+            return;
+        }
+        
         setLoading(true);
         try {
             // Map appointmentDate to scheduledDate for the API

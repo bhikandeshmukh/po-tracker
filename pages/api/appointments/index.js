@@ -95,32 +95,13 @@ async function getAppointments(req, res, user) {
 }
 
 
-async function generateAppointmentNumber() {
-    const counterRef = db.collection('counters').doc('appointments');
-    
-    return await db.runTransaction(async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        
-        let nextNumber = 1;
-        if (counterDoc.exists) {
-            nextNumber = (counterDoc.data().lastNumber || 0) + 1;
-        }
-        
-        transaction.set(counterRef, { lastNumber: nextNumber, updatedAt: new Date() });
-        
-        // Format: APT-YYYYMMDD-XXXX (e.g., APT-20260103-0001)
-        const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const paddedNumber = String(nextNumber).padStart(4, '0');
-        
-        return `APT-${dateStr}-${paddedNumber}`;
-    });
-}
-
 async function createAppointment(req, res, user) {
     const {
+        newAppointmentId,
+        appointmentNumber: providedAppointmentNumber,
         shipmentId,
         lrDocketNumber,
+        invoiceNumber,
         scheduledDate,
         scheduledTimeSlot,
         deliveryLocation,
@@ -128,11 +109,30 @@ async function createAppointment(req, res, user) {
         status = 'scheduled'
     } = req.body;
 
+    // Use user-provided appointment ID, or generate one if not provided
+    const appointmentId = newAppointmentId || providedAppointmentNumber;
+    
     // Validate required fields
+    if (!appointmentId) {
+        return res.status(400).json({
+            success: false,
+            error: { code: 'VALIDATION_ERROR', message: 'Appointment ID is required' }
+        });
+    }
+
     if (!scheduledDate) {
         return res.status(400).json({
             success: false,
             error: { code: 'VALIDATION_ERROR', message: 'Scheduled date is required' }
+        });
+    }
+
+    // Check if appointment ID already exists
+    const existingAppointment = await db.collection('appointments').doc(appointmentId).get();
+    if (existingAppointment.exists) {
+        return res.status(409).json({
+            success: false,
+            error: { code: 'DUPLICATE_ERROR', message: `Appointment ID '${appointmentId}' already exists` }
         });
     }
 
@@ -149,13 +149,11 @@ async function createAppointment(req, res, user) {
         shipmentData = shipmentDoc.data();
     }
 
-    // Generate appointment number
-    const appointmentNumber = await generateAppointmentNumber();
     const now = new Date();
     
     const appointmentData = {
-        appointmentId: appointmentNumber,
-        appointmentNumber: appointmentNumber,
+        appointmentId: appointmentId,
+        appointmentNumber: appointmentId,
         shipmentId: shipmentId || null,
         shipmentNumber: shipmentData?.shipmentNumber || '',
         poId: shipmentData?.poId || '',
@@ -165,6 +163,7 @@ async function createAppointment(req, res, user) {
         transporterId: shipmentData?.transporterId || '',
         transporterName: shipmentData?.transporterName || '',
         lrDocketNumber: lrDocketNumber || '',
+        invoiceNumber: invoiceNumber || '',
         scheduledDate: new Date(scheduledDate),
         scheduledTimeSlot: scheduledTimeSlot || '',
         deliveryLocation: deliveryLocation || {},
@@ -176,13 +175,13 @@ async function createAppointment(req, res, user) {
         updatedAt: now
     };
 
-    // Use the appointment number as document ID
-    await db.collection('appointments').doc(appointmentNumber).set(appointmentData);
+    // Use the user-provided appointment ID as document ID
+    await db.collection('appointments').doc(appointmentId).set(appointmentData);
 
     return res.status(201).json({
         success: true,
         data: {
-            id: appointmentNumber,
+            id: appointmentId,
             ...appointmentData,
             scheduledDate: appointmentData.scheduledDate.toISOString(),
             createdAt: appointmentData.createdAt.toISOString(),
